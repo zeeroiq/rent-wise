@@ -1,0 +1,11 @@
+spring:
+  h2:
+    console:
+      enabled: false
+
+server:
+  forward-headers-strategy: framework
+
+app:
+  otp:
+    expose-dev-code: false
