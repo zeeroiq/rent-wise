@@ -1,0 +1,520 @@
+:root {
+  font-family: 'Avenir Next', 'Segoe UI', sans-serif;
+  line-height: 1.5;
+  font-weight: 400;
+  color: #1f2624;
+  background:
+    radial-gradient(circle at top left, rgba(230, 168, 74, 0.24), transparent 26%),
+    linear-gradient(180deg, #efe8de 0%, #f7f2ea 38%, #f4efe8 100%);
+  font-synthesis: none;
+  text-rendering: optimizeLegibility;
+  -webkit-font-smoothing: antialiased;
+  -moz-osx-font-smoothing: grayscale;
+  --surface: #fff9f1;
+  --surface-strong: #f5ecdf;
+  --line: #d7cbbd;
+  --ink: #1f2624;
+  --muted: #5f6a66;
+  --teal: #145b52;
+  --teal-soft: #d9ece8;
+  --clay: #b75d3f;
+  --clay-soft: #f1dfd6;
+  --olive: #687345;
+  --olive-soft: #e4ead8;
+  --shadow: 0 18px 40px rgba(67, 49, 27, 0.08);
+}
+
+* {
+  box-sizing: border-box;
+}
+
+body {
+  margin: 0;
+  min-width: 320px;
+  min-height: 100vh;
+}
+
+button,
+input,
+select,
+textarea {
+  font: inherit;
+}
+
+button,
+.oauth-button {
+  border: 1px solid var(--line);
+  border-radius: 8px;
+  background: var(--teal);
+  color: white;
+  cursor: pointer;
+  padding: 0.82rem 1rem;
+  text-decoration: none;
+  transition:
+    transform 120ms ease,
+    background 120ms ease,
+    border-color 120ms ease;
+}
+
+button:hover,
+.oauth-button:hover {
+  transform: translateY(-1px);
+}
+
+button:disabled,
+.oauth-button.disabled {
+  cursor: not-allowed;
+  opacity: 0.48;
+  pointer-events: none;
+}
+
+.ghost-button {
+  background: transparent;
+  color: var(--teal);
+}
+
+input,
+select,
+textarea {
+  width: 100%;
+  border: 1px solid var(--line);
+  border-radius: 8px;
+  background: var(--surface);
+  color: var(--ink);
+  padding: 0.82rem 0.9rem;
+}
+
+textarea {
+  min-height: 8.25rem;
+  resize: vertical;
+}
+
+label {
+  display: grid;
+  gap: 0.45rem;
+  color: var(--muted);
+}
+
+label span {
+  font-size: 0.92rem;
+}
+
+#root {
+  min-height: 100vh;
+}
+
+.app-shell {
+  min-height: 100vh;
+  padding: 1.5rem;
+}
+
+.topbar {
+  display: flex;
+  justify-content: space-between;
+  gap: 1rem;
+  align-items: flex-end;
+  padding: 1.6rem 1.8rem;
+  background: rgba(255, 249, 241, 0.86);
+  border: 1px solid rgba(215, 203, 189, 0.88);
+  border-radius: 8px;
+  box-shadow: var(--shadow);
+}
+
+.topbar h1,
+.summary-strip h2 {
+  margin: 0;
+  font-size: 2.4rem;
+  line-height: 1;
+}
+
+.eyebrow {
+  margin: 0 0 0.45rem;
+  color: var(--clay);
+  text-transform: uppercase;
+  font-size: 0.76rem;
+}
+
+.status-strip {
+  display: flex;
+  gap: 0.9rem;
+  flex-wrap: wrap;
+  align-items: stretch;
+}
+
+.status-item,
+.session-badge,
+.banner,
+.score-chip,
+.rating-badges span,
+.signal-list span {
+  border: 1px solid var(--line);
+  border-radius: 8px;
+}
+
+.status-item,
+.session-badge {
+  background: var(--surface);
+  padding: 0.85rem 1rem;
+  display: grid;
+  gap: 0.2rem;
+}
+
+.status-label {
+  color: var(--muted);
+  font-size: 0.82rem;
+}
+
+.workspace {
+  display: grid;
+  grid-template-columns: minmax(20rem, 26rem) minmax(0, 1fr);
+  gap: 1.25rem;
+  margin-top: 1.25rem;
+}
+
+.left-rail,
+.detail-band {
+  display: grid;
+  gap: 1rem;
+}
+
+.panel,
+.results-band,
+.summary-strip,
+.landlord-band,
+.review-band,
+.composer-band {
+  background: rgba(255, 249, 241, 0.94);
+  border: 1px solid rgba(215, 203, 189, 0.9);
+  border-radius: 8px;
+  box-shadow: var(--shadow);
+  padding: 1rem;
+}
+
+.section-head,
+.reply-meta,
+.review-header,
+.tile-topline,
+.slider-label {
+  display: flex;
+  justify-content: space-between;
+  gap: 0.75rem;
+  align-items: baseline;
+}
+
+.section-head h2,
+.review-card h3,
+.review-copy-grid h4,
+.composer-band h2,
+.landlord-band h2 {
+  margin: 0;
+}
+
+.section-head span,
+.helper-copy,
+.address-line,
+.summary-copy,
+.review-header p,
+.signed-in-note p,
+.comment-body p,
+.property-tile p,
+.property-tile small {
+  color: var(--muted);
+}
+
+.segmented-control {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 0.5rem;
+}
+
+.segment {
+  background: var(--surface);
+  color: var(--teal);
+}
+
+.segment.active {
+  background: var(--teal);
+  color: white;
+  border-color: var(--teal);
+}
+
+.inline-actions,
+.oauth-stack,
+.otp-box,
+.reply-form,
+.slider-grid,
+.checkbox-row,
+.review-form,
+.results-list,
+.review-list,
+.thread-list,
+.detail-band {
+  display: grid;
+  gap: 0.85rem;
+}
+
+.oauth-button {
+  text-align: center;
+}
+
+.helper-copy {
+  margin: 0;
+  font-size: 0.88rem;
+}
+
+.results-list {
+  max-height: 48rem;
+  overflow: auto;
+}
+
+.property-tile {
+  text-align: left;
+  background: var(--surface);
+  color: var(--ink);
+  padding: 1rem;
+}
+
+.property-tile.active {
+  border-color: var(--teal);
+  background: var(--teal-soft);
+}
+
+.summary-strip {
+  display: grid;
+  gap: 1rem;
+}
+
+.score-row {
+  display: grid;
+  grid-template-columns: repeat(4, minmax(0, 1fr));
+  gap: 0.75rem;
+}
+
+.score-chip {
+  background: var(--surface);
+  padding: 0.9rem;
+  display: grid;
+  gap: 0.15rem;
+}
+
+.score-chip span {
+  color: var(--muted);
+  font-size: 0.82rem;
+}
+
+.score-chip strong {
+  font-size: 1.55rem;
+}
+
+.score-chip.accent {
+  background: var(--clay-soft);
+}
+
+.landlord-grid {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 0.9rem;
+}
+
+.landlord-note {
+  grid-column: 1 / -1;
+}
+
+.review-card {
+  display: grid;
+  gap: 1rem;
+  padding: 1rem;
+  background: var(--surface);
+  border: 1px solid var(--line);
+  border-radius: 8px;
+}
+
+.rating-badges,
+.vote-row,
+.signal-list {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.5rem;
+}
+
+.rating-badges span,
+.signal-list span {
+  background: var(--surface-strong);
+  padding: 0.45rem 0.6rem;
+  color: var(--ink);
+}
+
+.review-copy-grid {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 0.9rem 1.2rem;
+}
+
+.review-copy-grid section {
+  padding: 0.85rem;
+  background: #fffcf7;
+  border: 1px solid var(--line);
+  border-radius: 8px;
+}
+
+.review-copy-grid p {
+  margin: 0.4rem 0 0;
+  color: var(--muted);
+}
+
+.vote-button {
+  background: var(--surface);
+  color: var(--ink);
+}
+
+.vote-button.active {
+  background: var(--olive-soft);
+  border-color: var(--olive);
+}
+
+.thread-block {
+  display: grid;
+  gap: 0.9rem;
+}
+
+.comment-node {
+  display: grid;
+  gap: 0.7rem;
+}
+
+.comment-body {
+  background: #fffcf7;
+  border: 1px solid var(--line);
+  border-radius: 8px;
+  padding: 0.9rem;
+}
+
+.comment-body p {
+  margin: 0 0 0.55rem;
+}
+
+.comment-children {
+  display: grid;
+  gap: 0.7rem;
+  padding-left: 1rem;
+  border-left: 2px solid var(--teal-soft);
+}
+
+.reply-meta strong {
+  color: var(--ink);
+}
+
+.form-grid {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 0.9rem;
+}
+
+.form-grid .wide {
+  grid-column: 1 / -1;
+}
+
+.slider-grid {
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+}
+
+.slider-field {
+  padding: 0.85rem;
+  border: 1px solid var(--line);
+  border-radius: 8px;
+  background: var(--surface);
+}
+
+.slider-field input {
+  padding: 0;
+  border: 0;
+  accent-color: var(--clay);
+}
+
+.checkbox-row {
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+}
+
+.checkbox-field {
+  display: flex;
+  gap: 0.65rem;
+  align-items: center;
+  padding: 0.8rem;
+  border: 1px solid var(--line);
+  border-radius: 8px;
+  background: var(--surface);
+}
+
+.checkbox-field input {
+  width: 1rem;
+  height: 1rem;
+  margin: 0;
+}
+
+.reply-form textarea {
+  min-height: 6rem;
+}
+
+.banner {
+  padding: 0.85rem 1rem;
+  background: var(--teal-soft);
+}
+
+.banner.error {
+  background: var(--clay-soft);
+  color: #6e2a17;
+}
+
+.banner.success {
+  background: var(--olive-soft);
+  color: #324215;
+}
+
+.empty-state {
+  padding: 1.25rem;
+  border: 1px dashed var(--line);
+  border-radius: 8px;
+  background: rgba(255, 249, 241, 0.7);
+  color: var(--muted);
+}
+
+@media (max-width: 1100px) {
+  .workspace {
+    grid-template-columns: 1fr;
+  }
+
+  .score-row,
+  .slider-grid,
+  .checkbox-row,
+  .landlord-grid {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+  }
+}
+
+@media (max-width: 760px) {
+  .app-shell {
+    padding: 1rem;
+  }
+
+  .topbar,
+  .section-head,
+  .review-header,
+  .reply-meta,
+  .status-strip {
+    display: grid;
+  }
+
+  .topbar h1,
+  .summary-strip h2 {
+    font-size: 1.95rem;
+  }
+
+  .score-row,
+  .review-copy-grid,
+  .form-grid,
+  .slider-grid,
+  .checkbox-row,
+  .landlord-grid {
+    grid-template-columns: 1fr;
+  }
+}
