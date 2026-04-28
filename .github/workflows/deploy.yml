@@ -124,7 +124,7 @@ jobs:
         run: |
           set -Eeuo pipefail
           trap 'status=$?; echo "::error::Artifact upload failed on line ${LINENO}: ${BASH_COMMAND}"; exit ${status}' ERR
-          scp -P "${DEPLOY_PORT}" -i $SSH_KEY_FILE -o ConnectTimeout=10 \
+          scp -i $SSH_KEY_FILE -o ConnectTimeout=10 \
             dist/rent-wise.jar \
             scripts/deploy.sh \
             "${DEPLOY_USER}@${DEPLOY_HOST}:/tmp/" 2>&1 | tee "${DEPLOY_DEBUG_DIR}/scp.log"
@@ -133,7 +133,7 @@ jobs:
         run: |
           set -Eeuo pipefail
           trap 'status=$?; echo "::error::Remote restart failed on line ${LINENO}: ${BASH_COMMAND}"; exit ${status}' ERR
-          ssh -p "${DEPLOY_PORT}" -i $SSH_KEY_FILE -o ConnectTimeout=10 "${DEPLOY_USER}@${DEPLOY_HOST}" \
+          ssh -i $SSH_KEY_FILE -o ConnectTimeout=10 "${DEPLOY_USER}@${DEPLOY_HOST}" \
             "chmod +x /tmp/deploy.sh && APP_NAME=rent-wise DEPLOY_DIR='${REMOTE_DEPLOY_DIR}' JAR_SOURCE=/tmp/rent-wise.jar /tmp/deploy.sh" \
             2>&1 | tee "${DEPLOY_DEBUG_DIR}/remote-deploy.log"
 
@@ -142,7 +142,7 @@ jobs:
         run: |
           set +e
           if [ -f "$SSH_KEY_FILE" ] && [ -n "${DEPLOY_HOST}" ] && [ -n "${DEPLOY_USER}" ]; then
-            ssh -p "${DEPLOY_PORT}" -i "$SSH_KEY_FILE" -o ConnectTimeout=10 "${DEPLOY_USER}@${DEPLOY_HOST}" \
+            ssh -i "$SSH_KEY_FILE" -o ConnectTimeout=10 "${DEPLOY_USER}@${DEPLOY_HOST}" \
               "echo '== release dir =='; ls -la '${REMOTE_DEPLOY_DIR}' || true; \
                echo '== logs dir =='; ls -la '${REMOTE_DEPLOY_DIR}/logs' || true; \
                echo '== application log tail =='; tail -n 200 '${REMOTE_DEPLOY_DIR}/logs/application.log' || true; \
