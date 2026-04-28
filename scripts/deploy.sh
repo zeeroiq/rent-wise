@@ -258,6 +258,12 @@ on_error() {
 
 trap 'on_error "${LINENO}" "${BASH_COMMAND}"' ERR
 
+# Verify sudo is available without password
+if ! sudo -n true 2>/dev/null; then
+  echo "[deploy] ERROR: sudo access required without password. Please configure passwordless sudo." >&2
+  exit 1
+fi
+
 if [[ -z "${JAR_SOURCE}" || ! -f "${JAR_SOURCE}" ]]; then
   echo "Usage: JAR_SOURCE=/path/to/rent-wise.jar $0" >&2
   exit 1
