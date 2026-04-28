@@ -73,6 +73,170 @@ ensure_java_installed() {
   exit 1
 }
 
+ensure_nginx_installed() {
+  if command -v nginx &>/dev/null; then
+    log "nginx is already installed"
+    return 0
+  fi
+
+  log "Installing nginx..."
+
+  # Try apt-get (Debian/Ubuntu)
+  if command -v apt-get &>/dev/null; then
+    log "Using apt-get to install nginx"
+    sudo apt-get update -qq
+    sudo apt-get install -y nginx 2>&1 | tail -5
+    sudo systemctl enable nginx
+    return $?
+  fi
+
+  # Try yum (RHEL/CentOS)
+  if command -v yum &>/dev/null; then
+    log "Using yum to install nginx"
+    sudo yum install -y nginx 2>&1 | tail -5
+    sudo systemctl enable nginx
+    return $?
+  fi
+
+  # Try dnf (Fedora)
+  if command -v dnf &>/dev/null; then
+    log "Using dnf to install nginx"
+    sudo dnf install -y nginx 2>&1 | tail -5
+    sudo systemctl enable nginx
+    return $?
+  fi
+
+  echo "[deploy] ERROR: nginx not found and no package manager available" >&2
+  exit 1
+}
+
+ensure_certbot_installed() {
+  if command -v certbot &>/dev/null; then
+    log "certbot is already installed"
+    return 0
+  fi
+
+  log "Installing certbot..."
+
+  # Try apt-get (Debian/Ubuntu)
+  if command -v apt-get &>/dev/null; then
+    log "Using apt-get to install certbot"
+    sudo apt-get update -qq
+    sudo apt-get install -y certbot python3-certbot-nginx 2>&1 | tail -5
+    return $?
+  fi
+
+  # Try yum (RHEL/CentOS)
+  if command -v yum &>/dev/null; then
+    log "Using yum to install certbot"
+    sudo yum install -y certbot python3-certbot-nginx 2>&1 | tail -5
+    return $?
+  fi
+
+  # Try dnf (Fedora)
+  if command -v dnf &>/dev/null; then
+    log "Using dnf to install certbot"
+    sudo dnf install -y certbot python3-certbot-nginx 2>&1 | tail -5
+    return $?
+  fi
+
+  echo "[deploy] ERROR: certbot not found and no package manager available" >&2
+  exit 1
+}
+
+configure_nginx() {
+  local domain="${DOMAIN:-x.com}"
+  local nginx_conf="/etc/nginx/sites-available/${APP_NAME}"
+
+  log "Configuring nginx for domain ${domain}"
+
+  # Create nginx site configuration
+  sudo tee "${nginx_conf}" > /dev/null <<EOF
+server {
+    listen 80;
+    server_name ${domain};
+
+    location / {
+        proxy_pass http://127.0.0.1:${PORT};
+        proxy_set_header Host \$host;
+        proxy_set_header X-Real-IP \$remote_addr;
+        proxy_set_header X-Forwarded-For \$proxy_add_x_forwarded_for;
+        proxy_set_header X-Forwarded-Proto \$scheme;
+    }
+}
+EOF
+
+  # Enable site
+  sudo ln -sf "${nginx_conf}" "/etc/nginx/sites-enabled/${APP_NAME}"
+  sudo rm -f /etc/nginx/sites-enabled/default 2>/dev/null || true
+
+  # Test configuration
+  if sudo nginx -t; then
+    sudo systemctl reload nginx
+    log "nginx configured and reloaded"
+  else
+    echo "[deploy] ERROR: nginx configuration test failed" >&2
+    exit 1
+  fi
+}
+
+configure_ssl() {
+  local domain="${DOMAIN:-x.com}"
+
+  log "Obtaining SSL certificate for ${domain}"
+
+  # Stop nginx temporarily for certbot standalone
+  sudo systemctl stop nginx
+
+  # Obtain certificate
+  if sudo certbot certonly --standalone --agree-tos --email admin@${domain} -d ${domain}; then
+    log "SSL certificate obtained successfully"
+  else
+    echo "[deploy] ERROR: Failed to obtain SSL certificate" >&2
+    sudo systemctl start nginx
+    exit 1
+  fi
+
+  # Restart nginx
+  sudo systemctl start nginx
+
+  # Configure nginx for HTTPS
+  local nginx_conf="/etc/nginx/sites-available/${APP_NAME}"
+
+  sudo tee "${nginx_conf}" > /dev/null <<EOF
+server {
+    listen 80;
+    server_name ${domain};
+    return 301 https://\$server_name\$request_uri;
+}
+
+server {
+    listen 443 ssl http2;
+    server_name ${domain};
+
+    ssl_certificate /etc/letsencrypt/live/${domain}/fullchain.pem;
+    ssl_certificate_key /etc/letsencrypt/live/${domain}/privkey.pem;
+
+    location / {
+        proxy_pass http://127.0.0.1:${PORT};
+        proxy_set_header Host \$host;
+        proxy_set_header X-Real-IP \$remote_addr;
+        proxy_set_header X-Forwarded-For \$proxy_add_x_forwarded_for;
+        proxy_set_header X-Forwarded-Proto \$scheme;
+    }
+}
+EOF
+
+  # Test and reload
+  if sudo nginx -t; then
+    sudo systemctl reload nginx
+    log "nginx SSL configured and reloaded"
+  else
+    echo "[deploy] ERROR: nginx SSL configuration test failed" >&2
+    exit 1
+  fi
+}
+
 tail_application_log() {
   if [[ -f "${LOG_DIR}/application.log" ]]; then
     echo "[deploy] Last 200 lines of ${LOG_DIR}/application.log:" >&2
@@ -100,6 +264,12 @@ fi
 
 # Ensure Java is installed before proceeding
 ensure_java_installed
+
+# Ensure nginx is installed
+ensure_nginx_installed
+
+# Ensure certbot is installed
+ensure_certbot_installed
 
 mkdir -p "${SHARED_DIR}" "${RELEASES_DIR}" "${LOG_DIR}"
 log "Deploying ${APP_NAME} into ${DEPLOY_DIR}"
@@ -146,7 +316,7 @@ nohup "${JAVA_BIN}" \
   "${java_opts[@]}" \
   -Dserver.port="${PORT}" \
   -Dspring.profiles.active="${SPRING_PROFILES_ACTIVE}" \
-  -Dapp.frontend-base-url="${FRONTEND_BASE_URL:-http://127.0.0.1:${PORT}}" \
+  -Dapp.frontend-base-url="${FRONTEND_BASE_URL:-https://${DOMAIN:-x.com}}" \
   -jar "${CURRENT_JAR}" >> "${LOG_DIR}/application.log" 2>&1 &
 
 echo $! > "${PID_FILE}"
@@ -154,6 +324,11 @@ echo $! > "${PID_FILE}"
 for _ in $(seq 1 30); do
   if curl -fsS "${HEALTH_URL}" >/dev/null; then
     log "Deployment complete. ${APP_NAME} is healthy at ${HEALTH_URL}"
+    # Configure nginx reverse proxy
+    configure_nginx
+    # Configure SSL
+    configure_ssl
+    log "App is now accessible at https://${DOMAIN:-x.com}"
     exit 0
   fi
   sleep 2
