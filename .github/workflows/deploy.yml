@@ -102,21 +102,45 @@ jobs:
           echo "DEPLOY_PORT=${DEPLOY_PORT_SECRET:-22}" >> "${GITHUB_ENV}"
           echo "REMOTE_DEPLOY_DIR=${remote_deploy_dir}" >> "${GITHUB_ENV}"
 
+      - name: Add Remote to Known Hosts
+        run: ssh-keyscan -H ${{ secrets.DEPLOY_HOST }} >> ~/.ssh/known_hosts
+
       - name: Configure SSH
         run: |
           set -Eeuo pipefail
           trap 'status=$?; echo "::error::SSH setup failed on line ${LINENO}: ${BASH_COMMAND}"; exit ${status}' ERR
           mkdir -p ~/.ssh
           chmod 700 ~/.ssh
-          printf '%s\n' "${DEPLOY_SSH_KEY}" > ~/.ssh/id_ed25519
-          chmod 600 ~/.ssh/id_ed25519
+          # Determine key type
+          key_header=$(echo "${DEPLOY_SSH_KEY}" | awk '{print $1}')
+          case $key_header in
+            ssh-rsa)
+              key_file=id_rsa
+              ;;
+            ssh-ed25519)
+              key_file=id_ed25519
+              ;;
+            ecdsa-sha2-nistp256|ecdsa-sha2-nistp384|ecdsa-sha2-nistp521)
+              key_file=id_ecdsa
+              ;;
+            ssh-dss)
+              key_file=id_dsa
+              ;;
+            *)
+              echo "::error::Unsupported SSH key type: $key_header"
+              exit 1
+              ;;
+          esac
+          printf '%s\n' "${DEPLOY_SSH_KEY}" > ~/.ssh/$key_file
+          chmod 600 ~/.ssh/$key_file
           ssh-keyscan -p "${DEPLOY_PORT}" -H "${DEPLOY_HOST}" 2>&1 | tee "${DEPLOY_DEBUG_DIR}/ssh-keyscan.log" >> ~/.ssh/known_hosts
+          echo "SSH_KEY_FILE=~/.ssh/$key_file" >> $GITHUB_ENV
 
       - name: Upload artifact and deploy script
         run: |
           set -Eeuo pipefail
           trap 'status=$?; echo "::error::Artifact upload failed on line ${LINENO}: ${BASH_COMMAND}"; exit ${status}' ERR
-          scp -P "${DEPLOY_PORT}" -i ~/.ssh/id_ed25519 \
+          scp -P "${DEPLOY_PORT}" -i $SSH_KEY_FILE -o ConnectTimeout=10 \
             dist/rent-wise.jar \
             scripts/deploy.sh \
             "${DEPLOY_USER}@${DEPLOY_HOST}:/tmp/" 2>&1 | tee "${DEPLOY_DEBUG_DIR}/scp.log"
@@ -125,7 +149,7 @@ jobs:
         run: |
           set -Eeuo pipefail
           trap 'status=$?; echo "::error::Remote restart failed on line ${LINENO}: ${BASH_COMMAND}"; exit ${status}' ERR
-          ssh -p "${DEPLOY_PORT}" -i ~/.ssh/id_ed25519 "${DEPLOY_USER}@${DEPLOY_HOST}" \
+          ssh -p "${DEPLOY_PORT}" -i $SSH_KEY_FILE -o ConnectTimeout=10 "${DEPLOY_USER}@${DEPLOY_HOST}" \
             "chmod +x /tmp/deploy.sh && APP_NAME=rent-wise DEPLOY_DIR='${REMOTE_DEPLOY_DIR}' JAR_SOURCE=/tmp/rent-wise.jar /tmp/deploy.sh" \
             2>&1 | tee "${DEPLOY_DEBUG_DIR}/remote-deploy.log"
 
@@ -133,8 +157,8 @@ jobs:
         if: failure()
         run: |
           set +e
-          if [ -f ~/.ssh/id_ed25519 ] && [ -n "${DEPLOY_HOST}" ] && [ -n "${DEPLOY_USER}" ]; then
-            ssh -p "${DEPLOY_PORT}" -i ~/.ssh/id_ed25519 "${DEPLOY_USER}@${DEPLOY_HOST}" \
+          if [ -f "$SSH_KEY_FILE" ] && [ -n "${DEPLOY_HOST}" ] && [ -n "${DEPLOY_USER}" ]; then
+            ssh -p "${DEPLOY_PORT}" -i "$SSH_KEY_FILE" -o ConnectTimeout=10 "${DEPLOY_USER}@${DEPLOY_HOST}" \
               "echo '== release dir =='; ls -la '${REMOTE_DEPLOY_DIR}' || true; \
                echo '== logs dir =='; ls -la '${REMOTE_DEPLOY_DIR}/logs' || true; \
                echo '== application log tail =='; tail -n 200 '${REMOTE_DEPLOY_DIR}/logs/application.log' || true; \
