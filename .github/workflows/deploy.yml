@@ -74,9 +74,16 @@ jobs:
           name: rent-wise-jar
           path: dist
 
-      - name: Validate deployment configuration
+      - name: Prepare deploy diagnostics directory
         run: |
           set -euo pipefail
+          mkdir -p "${RUNNER_TEMP}/deploy-debug"
+          echo "DEPLOY_DEBUG_DIR=${RUNNER_TEMP}/deploy-debug" >> "${GITHUB_ENV}"
+
+      - name: Validate deployment configuration
+        run: |
+          set -Eeuo pipefail
+          trap 'status=$?; echo "::error::Deployment configuration failed on line ${LINENO}: ${BASH_COMMAND}"; exit ${status}' ERR
           for name in DEPLOY_HOST DEPLOY_USER DEPLOY_SSH_KEY; do
             if [ -z "${!name}" ]; then
               echo "::error::Missing required secret: ${name}"
@@ -97,23 +104,50 @@ jobs:
 
       - name: Configure SSH
         run: |
-          set -euo pipefail
+          set -Eeuo pipefail
+          trap 'status=$?; echo "::error::SSH setup failed on line ${LINENO}: ${BASH_COMMAND}"; exit ${status}' ERR
           mkdir -p ~/.ssh
           chmod 700 ~/.ssh
           printf '%s\n' "${DEPLOY_SSH_KEY}" > ~/.ssh/id_ed25519
           chmod 600 ~/.ssh/id_ed25519
-          ssh-keyscan -p "${DEPLOY_PORT}" -H "${DEPLOY_HOST}" >> ~/.ssh/known_hosts
+          ssh-keyscan -p "${DEPLOY_PORT}" -H "${DEPLOY_HOST}" 2>&1 | tee "${DEPLOY_DEBUG_DIR}/ssh-keyscan.log" >> ~/.ssh/known_hosts
 
       - name: Upload artifact and deploy script
         run: |
-          set -euo pipefail
+          set -Eeuo pipefail
+          trap 'status=$?; echo "::error::Artifact upload failed on line ${LINENO}: ${BASH_COMMAND}"; exit ${status}' ERR
           scp -P "${DEPLOY_PORT}" -i ~/.ssh/id_ed25519 \
             dist/rent-wise.jar \
             scripts/deploy.sh \
-            "${DEPLOY_USER}@${DEPLOY_HOST}:/tmp/"
+            "${DEPLOY_USER}@${DEPLOY_HOST}:/tmp/" 2>&1 | tee "${DEPLOY_DEBUG_DIR}/scp.log"
 
       - name: Restart remote application
         run: |
-          set -euo pipefail
+          set -Eeuo pipefail
+          trap 'status=$?; echo "::error::Remote restart failed on line ${LINENO}: ${BASH_COMMAND}"; exit ${status}' ERR
           ssh -p "${DEPLOY_PORT}" -i ~/.ssh/id_ed25519 "${DEPLOY_USER}@${DEPLOY_HOST}" \
-            "chmod +x /tmp/deploy.sh && APP_NAME=rent-wise DEPLOY_DIR='${REMOTE_DEPLOY_DIR}' JAR_SOURCE=/tmp/rent-wise.jar /tmp/deploy.sh"
+            "chmod +x /tmp/deploy.sh && APP_NAME=rent-wise DEPLOY_DIR='${REMOTE_DEPLOY_DIR}' JAR_SOURCE=/tmp/rent-wise.jar /tmp/deploy.sh" \
+            2>&1 | tee "${DEPLOY_DEBUG_DIR}/remote-deploy.log"
+
+      - name: Collect remote logs on failure
+        if: failure()
+        run: |
+          set +e
+          if [ -f ~/.ssh/id_ed25519 ] && [ -n "${DEPLOY_HOST}" ] && [ -n "${DEPLOY_USER}" ]; then
+            ssh -p "${DEPLOY_PORT}" -i ~/.ssh/id_ed25519 "${DEPLOY_USER}@${DEPLOY_HOST}" \
+              "echo '== release dir =='; ls -la '${REMOTE_DEPLOY_DIR}' || true; \
+               echo '== logs dir =='; ls -la '${REMOTE_DEPLOY_DIR}/logs' || true; \
+               echo '== application log tail =='; tail -n 200 '${REMOTE_DEPLOY_DIR}/logs/application.log' || true; \
+               echo '== pid file =='; cat '${REMOTE_DEPLOY_DIR}/rent-wise.pid' || true" \
+              > "${DEPLOY_DEBUG_DIR}/remote-debug.log" 2>&1 || true
+          else
+            echo "SSH configuration not available; skipping remote log collection." > "${DEPLOY_DEBUG_DIR}/remote-debug.log"
+          fi
+
+      - name: Upload deploy diagnostics
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: deploy-debug-${{ github.run_id }}
+          path: ${{ env.DEPLOY_DEBUG_DIR }}
+          if-no-files-found: warn
