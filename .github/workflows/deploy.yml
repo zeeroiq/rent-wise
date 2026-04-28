@@ -1,0 +1,119 @@
+name: Deploy
+
+on:
+  workflow_dispatch:
+    inputs:
+      ref:
+        description: Git ref to deploy
+        required: true
+        default: main
+      deploy_dir:
+        description: Optional remote install directory override
+        required: false
+        default: ""
+
+permissions:
+  contents: read
+
+jobs:
+  package:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Check out repository
+        uses: actions/checkout@v4
+        with:
+          ref: ${{ inputs.ref }}
+
+      - name: Set up Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: 24
+          cache: npm
+          cache-dependency-path: frontend/package-lock.json
+
+      - name: Set up Java
+        uses: actions/setup-java@v4
+        with:
+          distribution: temurin
+          java-version: 25
+          cache: gradle
+
+      - name: Install frontend dependencies
+        working-directory: frontend
+        run: npm ci
+
+      - name: Build deployable jar
+        working-directory: backend
+        run: ./gradlew clean bootJar
+
+      - name: Upload release artifact
+        uses: actions/upload-artifact@v4
+        with:
+          name: rent-wise-jar
+          path: backend/build/libs/rent-wise.jar
+          if-no-files-found: error
+
+  deploy:
+    needs: package
+    runs-on: ubuntu-latest
+    env:
+      DEPLOY_HOST: ${{ secrets.DEPLOY_HOST }}
+      DEPLOY_USER: ${{ secrets.DEPLOY_USER }}
+      DEPLOY_SSH_KEY: ${{ secrets.DEPLOY_SSH_KEY }}
+      DEPLOY_PORT_SECRET: ${{ secrets.DEPLOY_PORT }}
+      DEPLOY_DIR_SECRET: ${{ secrets.DEPLOY_DIR }}
+    steps:
+      - name: Check out repository
+        uses: actions/checkout@v4
+        with:
+          ref: ${{ inputs.ref }}
+
+      - name: Download release artifact
+        uses: actions/download-artifact@v4
+        with:
+          name: rent-wise-jar
+          path: dist
+
+      - name: Validate deployment configuration
+        run: |
+          set -euo pipefail
+          for name in DEPLOY_HOST DEPLOY_USER DEPLOY_SSH_KEY; do
+            if [ -z "${!name}" ]; then
+              echo "::error::Missing required secret: ${name}"
+              exit 1
+            fi
+          done
+
+          if [ -n "${{ inputs.deploy_dir }}" ]; then
+            remote_deploy_dir="${{ inputs.deploy_dir }}"
+          elif [ -n "${DEPLOY_DIR_SECRET}" ]; then
+            remote_deploy_dir="${DEPLOY_DIR_SECRET}"
+          else
+            remote_deploy_dir="/opt/rent-wise"
+          fi
+
+          echo "DEPLOY_PORT=${DEPLOY_PORT_SECRET:-22}" >> "${GITHUB_ENV}"
+          echo "REMOTE_DEPLOY_DIR=${remote_deploy_dir}" >> "${GITHUB_ENV}"
+
+      - name: Configure SSH
+        run: |
+          set -euo pipefail
+          mkdir -p ~/.ssh
+          chmod 700 ~/.ssh
+          printf '%s\n' "${DEPLOY_SSH_KEY}" > ~/.ssh/id_ed25519
+          chmod 600 ~/.ssh/id_ed25519
+          ssh-keyscan -p "${DEPLOY_PORT}" -H "${DEPLOY_HOST}" >> ~/.ssh/known_hosts
+
+      - name: Upload artifact and deploy script
+        run: |
+          set -euo pipefail
+          scp -P "${DEPLOY_PORT}" -i ~/.ssh/id_ed25519 \
+            dist/rent-wise.jar \
+            scripts/deploy.sh \
+            "${DEPLOY_USER}@${DEPLOY_HOST}:/tmp/"
+
+      - name: Restart remote application
+        run: |
+          set -euo pipefail
+          ssh -p "${DEPLOY_PORT}" -i ~/.ssh/id_ed25519 "${DEPLOY_USER}@${DEPLOY_HOST}" \
+            "chmod +x /tmp/deploy.sh && APP_NAME=rent-wise DEPLOY_DIR='${REMOTE_DEPLOY_DIR}' JAR_SOURCE=/tmp/rent-wise.jar /tmp/deploy.sh"

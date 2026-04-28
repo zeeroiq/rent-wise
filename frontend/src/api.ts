@@ -11,8 +11,14 @@ import type {
   VoteSummary,
 } from './types'
 
-const API_BASE = import.meta.env.VITE_API_BASE_URL ?? 'http://localhost:8080/api'
-const BACKEND_BASE = import.meta.env.VITE_BACKEND_BASE_URL ?? 'http://localhost:8080'
+const defaultOrigin =
+  typeof window === 'undefined' ? 'http://localhost:8080' : window.location.origin
+const API_BASE =
+  import.meta.env.VITE_API_BASE_URL ??
+  (import.meta.env.DEV ? 'http://localhost:8080/api' : `${defaultOrigin}/api`)
+const BACKEND_BASE =
+  import.meta.env.VITE_BACKEND_BASE_URL ??
+  (import.meta.env.DEV ? 'http://localhost:8080' : defaultOrigin)
 
 async function request<T>(path: string, init?: RequestInit): Promise<T> {
   const response = await fetch(`${API_BASE}${path}`, {

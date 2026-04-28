@@ -7,6 +7,11 @@ plugins {
 group = 'com.rentwise'
 version = '0.0.1-SNAPSHOT'
 
+def frontendDir = file("${projectDir}/../frontend")
+def frontendDistDir = file("${frontendDir}/dist")
+def bundledFrontendDir = layout.buildDirectory.dir("bundled-frontend")
+def npmCommand = System.getProperty("os.name").toLowerCase().contains("windows") ? "npm.cmd" : "npm"
+
 java {
 	toolchain {
 		languageVersion = JavaLanguageVersion.of(25)
@@ -35,4 +40,45 @@ dependencies {
 
 tasks.named('test') {
 	useJUnitPlatform()
+}
+
+tasks.register('buildFrontend', Exec) {
+	group = 'build'
+	description = 'Builds the React frontend for production packaging.'
+	workingDir frontendDir
+	commandLine npmCommand, 'run', 'build'
+
+	inputs.files(
+		fileTree("${frontendDir}/src"),
+		file("${frontendDir}/package.json"),
+		file("${frontendDir}/package-lock.json"),
+		file("${frontendDir}/tsconfig.json"),
+		file("${frontendDir}/tsconfig.app.json"),
+		file("${frontendDir}/tsconfig.node.json"),
+		file("${frontendDir}/vite.config.ts"),
+		file("${frontendDir}/index.html")
+	)
+	outputs.dir(frontendDistDir)
+
+	doFirst {
+		if (!file("${frontendDir}/node_modules").exists()) {
+			throw new GradleException("Frontend dependencies are missing. Run 'npm ci' in ../frontend before packaging the application.")
+		}
+	}
+}
+
+tasks.register('bundleFrontend', Copy) {
+	group = 'build'
+	description = 'Copies the production frontend bundle into the Spring Boot jar layout.'
+	dependsOn tasks.named('buildFrontend')
+	from(frontendDistDir)
+	into(bundledFrontendDir)
+}
+
+tasks.named('bootJar') {
+	dependsOn tasks.named('bundleFrontend')
+	archiveFileName = 'rent-wise.jar'
+	from(bundledFrontendDir) {
+		into 'BOOT-INF/classes/static'
+	}
 }

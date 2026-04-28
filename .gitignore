@@ -3,4 +3,5 @@ frontend/dist
 backend/.gradle
 backend/build
 backend/data
+deploy/*.env
 .DS_Store
