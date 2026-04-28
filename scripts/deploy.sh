@@ -4,6 +4,7 @@ set -Eeuo pipefail
 APP_NAME="${APP_NAME:-rent-wise}"
 DEPLOY_DIR="${DEPLOY_DIR:-/opt/${APP_NAME}}"
 JAR_SOURCE="${JAR_SOURCE:-${1:-}}"
+DOMAIN="${DOMAIN:-x.com}"
 SHARED_DIR="${DEPLOY_DIR}/shared"
 RELEASES_DIR="${DEPLOY_DIR}/releases"
 LOG_DIR="${DEPLOY_DIR}/logs"
