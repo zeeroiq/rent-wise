@@ -14,9 +14,63 @@ JAVA_BIN="${JAVA_BIN:-java}"
 PORT="${PORT:-8080}"
 SPRING_PROFILES_ACTIVE="${SPRING_PROFILES_ACTIVE:-prod}"
 HEALTH_URL="${HEALTH_URL:-http://127.0.0.1:${PORT}/api/catalog/states}"
+JAVA_VERSION="${JAVA_VERSION:-25}"
 
 log() {
   printf '[deploy] %s\n' "$*"
+}
+
+ensure_java_installed() {
+  local required_version="${JAVA_VERSION}"
+  local installed_version=0
+
+  # Check if Java is installed and get version
+  if command -v java &>/dev/null; then
+    installed_version=$(java -version 2>&1 | grep -oP '(?<=version ")?\d+' | head -1 || echo "0")
+    log "Java version $installed_version is installed"
+
+    if [[ "$installed_version" == "$required_version" ]]; then
+      log "Java version $installed_version matches required version $required_version"
+      return 0
+    fi
+
+    log "Java version $installed_version does not match required version $required_version. Uninstalling..."
+    # Uninstall current Java
+    if command -v apt-get &>/dev/null; then
+      sudo apt-get remove -y "openjdk-*" "*openjdk*" 2>&1 | tail -3 || true
+    elif command -v yum &>/dev/null; then
+      sudo yum remove -y "java-*openjdk*" 2>&1 | tail -3 || true
+    elif command -v dnf &>/dev/null; then
+      sudo dnf remove -y "java-*openjdk*" 2>&1 | tail -3 || true
+    fi
+  fi
+
+  log "Installing Java ${required_version}..."
+
+  # Try apt-get (Debian/Ubuntu)
+  if command -v apt-get &>/dev/null; then
+    log "Using apt-get to install Java ${required_version}"
+    sudo apt-get update -qq
+    sudo apt-get install -y "openjdk-${required_version}-jre-headless" 2>&1 | tail -5
+    return $?
+  fi
+
+  # Try yum (RHEL/CentOS)
+  if command -v yum &>/dev/null; then
+    log "Using yum to install Java ${required_version}"
+    sudo yum install -y "java-${required_version}-openjdk-headless" 2>&1 | tail -5
+    return $?
+  fi
+
+  # Try dnf (Fedora)
+  if command -v dnf &>/dev/null; then
+    log "Using dnf to install Java ${required_version}"
+    sudo dnf install -y "java-${required_version}-openjdk-headless" 2>&1 | tail -5
+    return $?
+  fi
+
+  echo "[deploy] ERROR: Java not found and no package manager available (apt-get, yum, or dnf)" >&2
+  exit 1
 }
 
 tail_application_log() {
@@ -43,6 +97,9 @@ if [[ -z "${JAR_SOURCE}" || ! -f "${JAR_SOURCE}" ]]; then
   echo "Usage: JAR_SOURCE=/path/to/rent-wise.jar $0" >&2
   exit 1
 fi
+
+# Ensure Java is installed before proceeding
+ensure_java_installed
 
 mkdir -p "${SHARED_DIR}" "${RELEASES_DIR}" "${LOG_DIR}"
 log "Deploying ${APP_NAME} into ${DEPLOY_DIR}"
