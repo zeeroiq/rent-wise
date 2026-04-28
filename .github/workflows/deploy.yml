@@ -117,7 +117,7 @@ jobs:
           key_file=id_rsa
           printf '%s\n' "${DEPLOY_SSH_KEY}" > ~/.ssh/$key_file
           chmod 600 ~/.ssh/$key_file
-          ssh-keyscan -p "${DEPLOY_PORT}" -H "${DEPLOY_HOST}" 2>&1 | tee "${DEPLOY_DEBUG_DIR}/ssh-keyscan.log" >> ~/.ssh/known_hosts
+          ssh-keyscan -H "${DEPLOY_HOST}" 2>&1 | tee "${DEPLOY_DEBUG_DIR}/ssh-keyscan.log" >> ~/.ssh/known_hosts
           echo "SSH_KEY_FILE=~/.ssh/$key_file" >> $GITHUB_ENV
 
       - name: Upload artifact and deploy script
