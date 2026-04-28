@@ -113,26 +113,8 @@ jobs:
           trap 'status=$?; echo "::error::SSH setup failed on line ${LINENO}: ${BASH_COMMAND}"; exit ${status}' ERR
           mkdir -p ~/.ssh
           chmod 700 ~/.ssh
-          # Determine key type
-          key_header=$(echo "${DEPLOY_SSH_KEY}" | awk '{print $1}')
-          case $key_header in
-            ssh-rsa)
-              key_file=id_rsa
-              ;;
-            ssh-ed25519)
-              key_file=id_ed25519
-              ;;
-            ecdsa-sha2-nistp256|ecdsa-sha2-nistp384|ecdsa-sha2-nistp521)
-              key_file=id_ecdsa
-              ;;
-            ssh-dss)
-              key_file=id_dsa
-              ;;
-            *)
-              echo "::error::Unsupported SSH key type: $key_header"
-              exit 1
-              ;;
-          esac
+          # Use id_rsa for all key types since SSH doesn't care about filename
+          key_file=id_rsa
           printf '%s\n' "${DEPLOY_SSH_KEY}" > ~/.ssh/$key_file
           chmod 600 ~/.ssh/$key_file
           ssh-keyscan -p "${DEPLOY_PORT}" -H "${DEPLOY_HOST}" 2>&1 | tee "${DEPLOY_DEBUG_DIR}/ssh-keyscan.log" >> ~/.ssh/known_hosts
