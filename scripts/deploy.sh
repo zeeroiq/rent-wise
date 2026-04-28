@@ -186,15 +186,21 @@ configure_ssl() {
 
   log "Obtaining SSL certificate for ${domain}"
 
-  # Stop nginx temporarily for certbot standalone
-  sudo systemctl stop nginx
+  # Check if nginx is running
+  if sudo systemctl is-active --quiet nginx; then
+    log "nginx is running, stopping it for certbot standalone"
+    sudo systemctl stop nginx
+    # Wait for port 80 to be free
+    sleep 5
+  fi
 
-  # Obtain certificate
+  # Obtain certificate using standalone
   if sudo certbot certonly --standalone --agree-tos --email admin@${domain} -d ${domain}; then
     log "SSL certificate obtained successfully"
   else
     echo "[deploy] ERROR: Failed to obtain SSL certificate" >&2
-    sudo systemctl start nginx
+    # Restart nginx if it was running
+    sudo systemctl start nginx 2>/dev/null || true
     exit 1
   fi
 
@@ -233,7 +239,7 @@ EOF
     sudo systemctl reload nginx
     log "nginx SSL configured and reloaded"
   else
-    echo "[deploy] ERROR: nginx SSL configuration test failed" >&2
+    echo "[deploy] ERROR: nginx configuration test failed" >&2
     exit 1
   fi
 }
