@@ -103,7 +103,9 @@ jobs:
           echo "REMOTE_DEPLOY_DIR=${remote_deploy_dir}" >> "${GITHUB_ENV}"
 
       - name: Add Remote to Known Hosts
-        run: ssh-keyscan -H ${{ secrets.DEPLOY_HOST }} >> ~/.ssh/known_hosts
+        run: |
+          mkdir -p ~/.ssh
+          ssh-keyscan -H ${{ secrets.DEPLOY_HOST }} >> ~/.ssh/known_hosts
 
       - name: Configure SSH
         run: |
