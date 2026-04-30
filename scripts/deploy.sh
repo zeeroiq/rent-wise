@@ -292,6 +292,13 @@ ensure_certbot_installed
 mkdir -p "${SHARED_DIR}" "${RELEASES_DIR}" "${LOG_DIR}"
 log "Deploying ${APP_NAME} into ${DEPLOY_DIR}"
 
+# Create environment file with secrets
+log "Creating environment file with secrets"
+cat > "${ENV_FILE}" <<EOF
+GOOGLE_CLIENT_ID=${GOOGLE_CLIENT_ID:-}
+GOOGLE_CLIENT_SECRET=${GOOGLE_CLIENT_SECRET:-}
+EOF
+
 if [[ -f "${ENV_FILE}" ]]; then
   log "Loading environment from ${ENV_FILE}"
   set -a

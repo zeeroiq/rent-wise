@@ -63,6 +63,8 @@ jobs:
       DEPLOY_PORT_SECRET: ${{ secrets.DEPLOY_PORT }}
       DEPLOY_DIR_SECRET: ${{ secrets.DEPLOY_DIR }}
       DEPLOY_DOMAIN: ${{ secrets.DEPLOY_DOMAIN }}
+      GOOGLE_CLIENT_ID: ${{ secrets.GOOGLE_CLIENT_ID }}
+      GOOGLE_CLIENT_SECRET: ${{ secrets.GOOGLE_CLIENT_SECRET }}
     steps:
       - name: Check out repository
         uses: actions/checkout@v4
@@ -135,7 +137,7 @@ jobs:
           set -Eeuo pipefail
           trap 'status=$?; echo "::error::Remote restart failed on line ${LINENO}: ${BASH_COMMAND}"; exit ${status}' ERR
           ssh -i $SSH_KEY_FILE -o ConnectTimeout=10 "${DEPLOY_USER}@${DEPLOY_HOST}" \
-            "chmod +x /tmp/deploy.sh && APP_NAME=rent-wise DEPLOY_DIR='${REMOTE_DEPLOY_DIR}' DOMAIN='${DEPLOY_DOMAIN}' JAR_SOURCE=/tmp/rent-wise.jar /tmp/deploy.sh" \
+            "chmod +x /tmp/deploy.sh && APP_NAME=rent-wise DEPLOY_DIR='${REMOTE_DEPLOY_DIR}' DOMAIN='${DEPLOY_DOMAIN}' GOOGLE_CLIENT_ID='${GOOGLE_CLIENT_ID}' GOOGLE_CLIENT_SECRET='${GOOGLE_CLIENT_SECRET}' JAR_SOURCE=/tmp/rent-wise.jar /tmp/deploy.sh" \
             2>&1 | tee "${DEPLOY_DEBUG_DIR}/remote-deploy.log"
 
       - name: Collect remote logs on failure
