@@ -194,14 +194,19 @@ configure_ssl() {
     sleep 5
   fi
 
-  # Obtain certificate using standalone
-  if sudo certbot certonly --standalone --agree-tos --email admin@${domain} -d ${domain}; then
-    log "SSL certificate obtained successfully"
+  # Check if certificate already exists
+  if sudo certbot certificates 2>/dev/null | grep -q "Certificate Name: ${domain}"; then
+    log "SSL certificate for ${domain} already exists, skipping certificate generation"
   else
-    echo "[deploy] ERROR: Failed to obtain SSL certificate" >&2
-    # Restart nginx if it was running
-    sudo systemctl start nginx 2>/dev/null || true
-    exit 1
+    # Obtain certificate using standalone
+    if sudo certbot certonly --standalone --agree-tos --email admin@${domain} -d ${domain} --non-interactive; then
+      log "SSL certificate obtained successfully"
+    else
+      echo "[deploy] ERROR: Failed to obtain SSL certificate" >&2
+      # Restart nginx if it was running
+      sudo systemctl start nginx 2>/dev/null || true
+      exit 1
+    fi
   fi
 
   # Restart nginx
