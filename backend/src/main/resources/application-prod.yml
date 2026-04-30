@@ -2,6 +2,23 @@ spring:
   h2:
     console:
       enabled: false
+  security:
+    oauth2:
+      client:
+        registration:
+          google:
+            client-id: ${GOOGLE_CLIENT_ID}
+            client-secret: ${GOOGLE_CLIENT_SECRET}
+            scope:
+              - openid
+              - profile
+              - email
+#          facebook:
+#            client-id: ${FACEBOOK_CLIENT_ID}
+#            client-secret: ${FACEBOOK_CLIENT_SECRET}
+#            scope:
+#              - public_profile
+#              - email
 
 server:
   forward-headers-strategy: framework
