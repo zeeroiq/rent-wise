@@ -2,6 +2,7 @@ package com.rentwise.backend.web;
 
 import com.rentwise.backend.auth.RentwisePrincipal;
 import com.rentwise.backend.landlord.Landlord;
+import com.rentwise.backend.landlord.LandlordRepository;
 import com.rentwise.backend.property.Property;
 import com.rentwise.backend.property.PropertyRepository;
 import com.rentwise.backend.review.Review;
@@ -32,19 +33,25 @@ public class AppService {
     private final ReviewCommentRepository reviewCommentRepository;
     private final ReviewVoteRepository reviewVoteRepository;
     private final AppUserRepository appUserRepository;
+    private final LandlordRepository landlordRepository;
+    private final LocationService locationService;
 
     public AppService(
             PropertyRepository propertyRepository,
             ReviewRepository reviewRepository,
             ReviewCommentRepository reviewCommentRepository,
             ReviewVoteRepository reviewVoteRepository,
-            AppUserRepository appUserRepository
+            AppUserRepository appUserRepository,
+            LandlordRepository landlordRepository,
+            LocationService locationService
     ) {
         this.propertyRepository = propertyRepository;
         this.reviewRepository = reviewRepository;
         this.reviewCommentRepository = reviewCommentRepository;
         this.reviewVoteRepository = reviewVoteRepository;
         this.appUserRepository = appUserRepository;
+        this.landlordRepository = landlordRepository;
+        this.locationService = locationService;
     }
 
     @Transactional(readOnly = true)
@@ -61,6 +68,34 @@ public class AppService {
     public List<String> localities(String state, String city) {
         return propertyRepository.findDistinctLocalities(state, city);
     }
+
+    public PropertyDetailDto createProperty(CreatePropertyCommand command, Authentication authentication) {
+        AppUser user = requireUser(authentication);
+        Landlord landlord = landlordRepository.findByAppUserId(user.getId())
+                .orElseThrow(() -> new IllegalArgumentException("Only landlords can create properties"));
+
+        if (!locationService.isValidState(command.state())) {
+            throw new IllegalArgumentException("Invalid state: " + command.state());
+        }
+        if (!locationService.isValidCity(command.state(), command.city())) {
+            throw new IllegalArgumentException("Invalid city for state " + command.state() + ": " + command.city());
+        }
+
+        Property property = new Property(
+                command.title().trim(),
+                command.propertyType().trim(),
+                command.addressLine1().trim(),
+                command.locality().trim(),
+                command.city().trim(),
+                command.state().trim(),
+                command.postalCode() != null ? command.postalCode().trim() : null,
+                command.highlights() != null ? command.highlights().trim() : null,
+                landlord
+        );
+        Property savedProperty = propertyRepository.save(property);
+        return buildPropertyDetail(savedProperty, user.getId());
+    }
+
 
     @Transactional(readOnly = true)
     public List<PropertyCardDto> search(String state, String city, String locality) {

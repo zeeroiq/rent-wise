@@ -49,6 +49,14 @@ public class AppController {
         return appService.propertyDetail(propertyId, authentication);
     }
 
+    @PostMapping("/properties")
+    public PropertyDetailDto createProperty(
+            @Valid @RequestBody CreatePropertyCommand command,
+            Authentication authentication
+    ) {
+        return appService.createProperty(command, authentication);
+    }
+
     @PostMapping("/properties/{propertyId}/reviews")
     public ReviewDto createReview(
             @PathVariable Long propertyId,

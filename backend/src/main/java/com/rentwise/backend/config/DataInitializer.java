@@ -37,18 +37,23 @@ public class DataInitializer {
             AppUser aisha = userRepository.save(new AppUser("Aisha", "aisha@example.com", null, AuthProvider.OTP_EMAIL, null));
             AppUser karan = userRepository.save(new AppUser("Karan", "karan@example.com", null, AuthProvider.GOOGLE, null));
             AppUser meera = userRepository.save(new AppUser("Meera", null, "+15550001001", AuthProvider.OTP_MOBILE, null));
+            // New AppUser for landlords
+            AppUser harishUser = userRepository.save(new AppUser("Harish Patel", "harish.patel@example.com", null, AuthProvider.OTP_EMAIL, null));
+            AppUser rosaUser = userRepository.save(new AppUser("Rosa Fernandez", "rosa.fernandez@example.com", null, AuthProvider.OTP_EMAIL, null));
 
             Landlord patel = landlordRepository.save(new Landlord(
                     "Harish Patel",
-                    "patel.rentals@example.com",
+                    "patel.rentals@example.example.com",
                     "+1-555-0100",
-                    "Fast to lease, slower when maintenance affects only one tenant."
+                    "Fast to lease, slower when maintenance affects only one tenant.",
+                    harishUser
             ));
             Landlord fernandez = landlordRepository.save(new Landlord(
                     "Rosa Fernandez",
-                    "rosa@example.com",
+                    "rosa.fernandez.rentals@example.com",
                     "+1-555-0122",
-                    "Professional documentation and clear move-out checklist."
+                    "Professional documentation and clear move-out checklist.",
+                    rosaUser
             ));
 
             Property indiranagar = propertyRepository.save(new Property(

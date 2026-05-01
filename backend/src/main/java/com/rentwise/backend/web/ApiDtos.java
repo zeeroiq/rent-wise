@@ -127,3 +127,16 @@ record AddReplyCommand(
 
 record VoteCommand(@NotNull ReviewVoteType type) {
 }
+
+record CreatePropertyCommand(
+        @NotBlank String title,
+        @NotBlank String propertyType,
+        @NotBlank String addressLine1,
+        @NotBlank String locality,
+        @NotBlank String city,
+        @NotBlank String state,
+        String postalCode,
+        String highlights
+) {
+}
+
