@@ -3,6 +3,12 @@ package com.rentwise.backend.config;
 import com.rentwise.backend.auth.AuthProvider;
 import com.rentwise.backend.landlord.Landlord;
 import com.rentwise.backend.landlord.LandlordRepository;
+import com.rentwise.backend.location.City;
+import com.rentwise.backend.location.CityRepository;
+import com.rentwise.backend.location.Country;
+import com.rentwise.backend.location.CountryRepository;
+import com.rentwise.backend.location.State;
+import com.rentwise.backend.location.StateRepository;
 import com.rentwise.backend.property.Property;
 import com.rentwise.backend.property.PropertyRepository;
 import com.rentwise.backend.review.Review;
@@ -27,16 +33,52 @@ public class DataInitializer {
             PropertyRepository propertyRepository,
             ReviewRepository reviewRepository,
             ReviewCommentRepository reviewCommentRepository,
-            ReviewVoteRepository reviewVoteRepository
+            ReviewVoteRepository reviewVoteRepository,
+            CountryRepository countryRepository,
+            StateRepository stateRepository,
+            CityRepository cityRepository
     ) {
         return args -> {
             if (propertyRepository.count() > 0) {
                 return;
             }
 
+            // Create admin user
+            userRepository.save(new AppUser("Admin", "admin@example.com", null, AuthProvider.OTP_EMAIL, null, true));
             AppUser aisha = userRepository.save(new AppUser("Aisha", "aisha@example.com", null, AuthProvider.OTP_EMAIL, null));
             AppUser karan = userRepository.save(new AppUser("Karan", "karan@example.com", null, AuthProvider.GOOGLE, null));
             AppUser meera = userRepository.save(new AppUser("Meera", null, "+15550001001", AuthProvider.OTP_MOBILE, null));
+
+            // Create countries
+            Country usa = countryRepository.save(new Country("US", "United States"));
+            Country india = countryRepository.save(new Country("IN", "India"));
+
+            // Create states for USA
+            State california = stateRepository.save(new State(usa, "CA", "California"));
+            State newyork = stateRepository.save(new State(usa, "NY", "New York"));
+            State texas = stateRepository.save(new State(usa, "TX", "Texas"));
+            State florida = stateRepository.save(new State(usa, "FL", "Florida"));
+            State illinois = stateRepository.save(new State(usa, "IL", "Illinois"));
+
+            // Create states for India
+            State karnataka = stateRepository.save(new State(india, "KA", "Karnataka"));
+            State maharashtra = stateRepository.save(new State(india, "MH", "Maharashtra"));
+
+            // Create cities for USA states
+            cityRepository.save(new City(california, "LA", "Los Angeles"));
+            cityRepository.save(new City(california, "SF", "San Francisco"));
+            cityRepository.save(new City(newyork, "NYC", "New York City"));
+            cityRepository.save(new City(newyork, "BUF", "Buffalo"));
+            cityRepository.save(new City(texas, "HOU", "Houston"));
+            cityRepository.save(new City(texas, "DAL", "Dallas"));
+            cityRepository.save(new City(florida, "MIA", "Miami"));
+            cityRepository.save(new City(florida, "ORL", "Orlando"));
+            cityRepository.save(new City(illinois, "CHI", "Chicago"));
+            cityRepository.save(new City(illinois, "SPR", "Springfield"));
+
+            // Create cities for India states
+            cityRepository.save(new City(karnataka, "BLR", "Bengaluru"));
+            cityRepository.save(new City(maharashtra, "MUM", "Mumbai"));
 
             Landlord patel = landlordRepository.save(new Landlord(
                     "Harish Patel",

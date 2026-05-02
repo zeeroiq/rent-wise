@@ -33,6 +33,9 @@ public class AppUser {
 
     private String avatarUrl;
 
+    @Column(nullable = false, columnDefinition = "boolean default false")
+    private boolean isAdmin = false;
+
     @Column(nullable = false)
     private LocalDateTime createdAt = LocalDateTime.now();
 
@@ -45,6 +48,16 @@ public class AppUser {
         this.mobileNumber = mobileNumber;
         this.authProvider = authProvider;
         this.avatarUrl = avatarUrl;
+        this.isAdmin = false;
+    }
+
+    public AppUser(String displayName, String email, String mobileNumber, AuthProvider authProvider, String avatarUrl, boolean isAdmin) {
+        this.displayName = displayName;
+        this.email = email;
+        this.mobileNumber = mobileNumber;
+        this.authProvider = authProvider;
+        this.avatarUrl = avatarUrl;
+        this.isAdmin = isAdmin;
     }
 
     public Long getId() {
@@ -93,5 +106,13 @@ public class AppUser {
 
     public LocalDateTime getCreatedAt() {
         return createdAt;
+    }
+
+    public boolean isAdmin() {
+        return isAdmin;
+    }
+
+    public void setAdmin(boolean admin) {
+        isAdmin = admin;
     }
 }

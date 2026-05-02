@@ -1,5 +1,6 @@
 import { startTransition, type FormEvent, useEffect, useMemo, useState } from 'react'
 import { api } from './api'
+import { AdminPanel } from './AdminPanel'
 import type {
   AuthChannel,
   AuthSession,
@@ -57,6 +58,7 @@ function App() {
   const [status, setStatus] = useState<string | null>(null)
   const [loadingSearch, setLoadingSearch] = useState(false)
   const [loadingDetail, setLoadingDetail] = useState(false)
+  const [showAdminPanel, setShowAdminPanel] = useState(false)
 
   const oauthProviders = session?.oauthProviders ?? []
   const selectedProperty = useMemo(
@@ -355,6 +357,15 @@ function App() {
             <div className="session-badge">
               <strong>{session.user.displayName}</strong>
               <span>{session.user.email ?? session.user.mobileNumber}</span>
+              {session.user.isAdmin && (
+                <button
+                  type="button"
+                  className={showAdminPanel ? 'admin-badge active' : 'admin-badge'}
+                  onClick={() => setShowAdminPanel(!showAdminPanel)}
+                >
+                  Admin
+                </button>
+              )}
               <button type="button" className="ghost-button" onClick={handleLogout}>
                 Sign out
               </button>
@@ -368,90 +379,95 @@ function App() {
         </div>
       </header>
 
-      <main className="workspace">
-        <aside className="left-rail">
-          <section className="panel">
-            <div className="section-head">
-              <h2>Access</h2>
-              <span>{session?.user ? 'Active' : 'Guest'}</span>
-            </div>
+      {showAdminPanel ? (
+        <main className="workspace admin-view">
+          <AdminPanel onError={reportError} onStatus={(msg) => setStatus(msg)} />
+        </main>
+      ) : (
+        <main className="workspace">
+          <aside className="left-rail">
+            <section className="panel">
+              <div className="section-head">
+                <h2>Access</h2>
+                <span>{session?.user ? 'Active' : 'Guest'}</span>
+              </div>
 
-            {!session?.user ? (
-              <>
-                <div className="segmented-control" role="tablist" aria-label="Auth channel">
-                  {(['EMAIL', 'MOBILE'] as AuthChannel[]).map((channel) => (
-                    <button
-                      key={channel}
-                      type="button"
-                      className={authChannel === channel ? 'segment active' : 'segment'}
-                      onClick={() => setAuthChannel(channel)}
-                    >
-                      {channel === 'EMAIL' ? 'Email OTP' : 'Mobile OTP'}
+              {!session?.user ? (
+                <>
+                  <div className="segmented-control" role="tablist" aria-label="Auth channel">
+                    {(['EMAIL', 'MOBILE'] as AuthChannel[]).map((channel) => (
+                      <button
+                        key={channel}
+                        type="button"
+                        className={authChannel === channel ? 'segment active' : 'segment'}
+                        onClick={() => setAuthChannel(channel)}
+                      >
+                        {channel === 'EMAIL' ? 'Email OTP' : 'Mobile OTP'}
+                      </button>
+                    ))}
+                  </div>
+
+                  <label>
+                    <span>Name</span>
+                    <input
+                      value={displayName}
+                      onChange={(event) => setDisplayName(event.target.value)}
+                      placeholder="Your display name"
+                    />
+                  </label>
+
+                  <label>
+                    <span>{authChannel === 'EMAIL' ? 'Email' : 'Mobile'}</span>
+                    <input
+                      value={destination}
+                      onChange={(event) => setDestination(event.target.value)}
+                      placeholder={
+                        authChannel === 'EMAIL'
+                          ? 'tenant@example.com'
+                          : '+1 555 000 1001'
+                      }
+                    />
+                  </label>
+
+                  <div className="inline-actions">
+                    <button type="button" onClick={handleRequestOtp}>
+                      Request OTP
                     </button>
-                  ))}
-                </div>
-
-                <label>
-                  <span>Name</span>
-                  <input
-                    value={displayName}
-                    onChange={(event) => setDisplayName(event.target.value)}
-                    placeholder="Your display name"
-                  />
-                </label>
-
-                <label>
-                  <span>{authChannel === 'EMAIL' ? 'Email' : 'Mobile'}</span>
-                  <input
-                    value={destination}
-                    onChange={(event) => setDestination(event.target.value)}
-                    placeholder={
-                      authChannel === 'EMAIL'
-                        ? 'tenant@example.com'
-                        : '+1 555 000 1001'
-                    }
-                  />
-                </label>
-
-                <div className="inline-actions">
-                  <button type="button" onClick={handleRequestOtp}>
-                    Request OTP
-                  </button>
-                  <button
-                    type="button"
-                    className="ghost-button"
-                    onClick={() => {
-                      setDestination('')
-                      setOtpChallenge(null)
-                      setOtpCode('')
-                    }}
-                  >
-                    Reset
-                  </button>
-                </div>
-
-                {otpChallenge ? (
-                  <div className="otp-box">
-                    <label>
-                      <span>Enter OTP</span>
-                      <input
-                        value={otpCode}
-                        onChange={(event) => setOtpCode(event.target.value)}
-                        placeholder="6-digit code"
-                      />
-                    </label>
-                    {otpChallenge.devCode && session?.devOtpVisible !== false ? (
-                      <p className="helper-copy">
-                        Dev code: <strong>{otpChallenge.devCode}</strong>
-                      </p>
-                    ) : null}
-                    <button type="button" onClick={handleVerifyOtp}>
-                      Verify and sign in
+                    <button
+                      type="button"
+                      className="ghost-button"
+                      onClick={() => {
+                        setDestination('')
+                        setOtpChallenge(null)
+                        setOtpCode('')
+                      }}
+                    >
+                      Reset
                     </button>
                   </div>
-                ) : null}
 
-                <div className="oauth-stack">
+                  {otpChallenge ? (
+                    <div className="otp-box">
+                      <label>
+                        <span>Enter OTP</span>
+                        <input
+                          value={otpCode}
+                          onChange={(event) => setOtpCode(event.target.value)}
+                          placeholder="6-digit code"
+                        />
+                      </label>
+                      {otpChallenge.devCode && session?.devOtpVisible !== false ? (
+                        <p className="helper-copy">
+                          Dev code: <strong>{otpChallenge.devCode}</strong>
+                        </p>
+                      ) : null}
+                      <button type="button" onClick={handleVerifyOtp}>
+                        Verify and sign in
+                      </button>
+                    </div>
+                  ) : null}
+
+                  <div className="oauth-stack">
                   {['google', 'facebook'].map((provider) => {
                     const enabled = oauthProviders.includes(provider)
                     return (
@@ -905,6 +921,7 @@ function App() {
           )}
         </section>
       </main>
+      )}
     </div>
   )
 }

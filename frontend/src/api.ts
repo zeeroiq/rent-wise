@@ -1,6 +1,11 @@
 import type {
   AuthChannel,
   AuthSession,
+  CityDto,
+  CountryDto,
+  CreateCityCommand,
+  CreateCountryCommand,
+  CreateStateCommand,
   OtpChallenge,
   PropertyCard,
   PropertyDetail,
@@ -8,6 +13,7 @@ import type {
   ReviewComment,
   ReviewDraft,
   ReviewVoteType,
+  StateDto,
   VoteSummary,
 } from './types'
 
@@ -130,6 +136,70 @@ export const api = {
     return request<VoteSummary>(`/reviews/${reviewId}/votes`, {
       method: 'POST',
       body: JSON.stringify({ type }),
+    })
+  },
+
+  // Location Management Endpoints
+  getAllCountries() {
+    return request<CountryDto[]>('/admin/locations/countries')
+  },
+
+  getCountry(countryId: number) {
+    return request<CountryDto>(`/admin/locations/countries/${countryId}`)
+  },
+
+  createCountry(payload: CreateCountryCommand) {
+    return request<CountryDto>('/admin/locations/countries', {
+      method: 'POST',
+      body: JSON.stringify(payload),
+    })
+  },
+
+  deleteCountry(countryId: number) {
+    return request<void>(`/admin/locations/countries/${countryId}`, {
+      method: 'DELETE',
+    })
+  },
+
+  getStatesByCountry(countryId: number) {
+    return request<StateDto[]>(`/admin/locations/countries/${countryId}/states`)
+  },
+
+  getState(stateId: number) {
+    return request<StateDto>(`/admin/locations/states/${stateId}`)
+  },
+
+  createState(payload: CreateStateCommand) {
+    return request<StateDto>('/admin/locations/states', {
+      method: 'POST',
+      body: JSON.stringify(payload),
+    })
+  },
+
+  deleteState(stateId: number) {
+    return request<void>(`/admin/locations/states/${stateId}`, {
+      method: 'DELETE',
+    })
+  },
+
+  getCitiesByState(stateId: number) {
+    return request<CityDto[]>(`/admin/locations/states/${stateId}/cities`)
+  },
+
+  getCity(cityId: number) {
+    return request<CityDto>(`/admin/locations/cities/${cityId}`)
+  },
+
+  createCity(payload: CreateCityCommand) {
+    return request<CityDto>('/admin/locations/cities', {
+      method: 'POST',
+      body: JSON.stringify(payload),
+    })
+  },
+
+  deleteCity(cityId: number) {
+    return request<void>(`/admin/locations/cities/${cityId}`, {
+      method: 'DELETE',
     })
   },
 }

@@ -7,6 +7,7 @@ export interface SessionUser {
   email: string | null
   mobileNumber: string | null
   avatarUrl: string | null
+  isAdmin?: boolean
 }
 
 export interface AuthSession {
@@ -124,3 +125,45 @@ export interface ReviewDraft {
   issuesResolved: boolean
   wouldRentAgain: boolean
 }
+
+// Location Management DTOs
+export interface CountryDto {
+  id: number
+  code: string
+  name: string
+  createdAt: string
+}
+
+export interface StateDto {
+  id: number
+  countryId: number
+  code: string
+  name: string
+  createdAt: string
+}
+
+export interface CityDto {
+  id: number
+  stateId: number
+  code: string
+  name: string
+  createdAt: string
+}
+
+export interface CreateCountryCommand {
+  code: string
+  name: string
+}
+
+export interface CreateStateCommand {
+  countryId: number
+  code: string
+  name: string
+}
+
+export interface CreateCityCommand {
+  stateId: number
+  code: string
+  name: string
+}
+
