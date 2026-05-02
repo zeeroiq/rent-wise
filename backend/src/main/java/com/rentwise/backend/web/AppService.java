@@ -312,7 +312,7 @@ public class AppService {
     }
 
     private SessionUserDto toSessionUser(AppUser user) {
-        return new SessionUserDto(user.getId(), user.getDisplayName(), user.getEmail(), user.getMobileNumber(), user.getAvatarUrl());
+        return new SessionUserDto(user.getId(), user.getDisplayName(), user.getEmail(), user.getMobileNumber(), user.getAvatarUrl(), user.isAdmin());
     }
 
     private LandlordDto mapLandlord(Landlord landlord) {

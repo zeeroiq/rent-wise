@@ -5,6 +5,7 @@ public record SessionUserDto(
         String displayName,
         String email,
         String mobileNumber,
-        String avatarUrl
+        String avatarUrl,
+        boolean isAdmin
 ) {
 }
