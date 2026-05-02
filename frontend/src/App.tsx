@@ -342,36 +342,36 @@ function App() {
   }
 
   return (
-    <div className="app-shell">
-      <header className="topbar">
+    <div className='app-shell'>
+      <header className='topbar'>
         <div>
-          <p className="eyebrow">Tenant intelligence platform</p>
+          <p className='eyebrow'>Tenant intelligence platform</p>
           <h1>RentWise</h1>
         </div>
-        <div className="status-strip">
-          <div className="status-item">
-            <span className="status-label">Backend</span>
+        <div className='status-strip'>
+          <div className='status-item'>
+            <span className='status-label'>Backend</span>
             <code>{api.backendBaseUrl}</code>
           </div>
           {session?.user ? (
-            <div className="session-badge">
+            <div className='session-badge'>
               <strong>{session.user.displayName}</strong>
               <span>{session.user.email ?? session.user.mobileNumber}</span>
               {session.user.isAdmin && (
                 <button
-                  type="button"
+                  type='button'
                   className={showAdminPanel ? 'admin-badge active' : 'admin-badge'}
                   onClick={() => setShowAdminPanel(!showAdminPanel)}
                 >
                   Admin
                 </button>
               )}
-              <button type="button" className="ghost-button" onClick={handleLogout}>
+              <button type='button' className='ghost-button' onClick={handleLogout}>
                 Sign out
               </button>
             </div>
           ) : (
-            <div className="session-badge">
+            <div className='session-badge'>
               <strong>Read mode</strong>
               <span>Sign in to submit reviews and vote</span>
             </div>
@@ -380,25 +380,25 @@ function App() {
       </header>
 
       {showAdminPanel ? (
-        <main className="workspace admin-view">
+        <main className='workspace admin-view'>
           <AdminPanel onError={reportError} onStatus={(msg) => setStatus(msg)} />
         </main>
       ) : (
-        <main className="workspace">
-          <aside className="left-rail">
-            <section className="panel">
-              <div className="section-head">
+        <main className='workspace'>
+          <aside className='left-rail'>
+            <section className='panel'>
+              <div className='section-head'>
                 <h2>Access</h2>
                 <span>{session?.user ? 'Active' : 'Guest'}</span>
               </div>
 
               {!session?.user ? (
                 <>
-                  <div className="segmented-control" role="tablist" aria-label="Auth channel">
+                  <div className='segmented-control' role='tablist' aria-label='Auth channel'>
                     {(['EMAIL', 'MOBILE'] as AuthChannel[]).map((channel) => (
                       <button
                         key={channel}
-                        type="button"
+                        type='button'
                         className={authChannel === channel ? 'segment active' : 'segment'}
                         onClick={() => setAuthChannel(channel)}
                       >
@@ -412,7 +412,7 @@ function App() {
                     <input
                       value={displayName}
                       onChange={(event) => setDisplayName(event.target.value)}
-                      placeholder="Your display name"
+                      placeholder='Your display name'
                     />
                   </label>
 
@@ -429,13 +429,13 @@ function App() {
                     />
                   </label>
 
-                  <div className="inline-actions">
-                    <button type="button" onClick={handleRequestOtp}>
+                  <div className='inline-actions'>
+                    <button type='button' onClick={handleRequestOtp}>
                       Request OTP
                     </button>
                     <button
-                      type="button"
-                      className="ghost-button"
+                      type='button'
+                      className='ghost-button'
                       onClick={() => {
                         setDestination('')
                         setOtpChallenge(null)
@@ -447,27 +447,27 @@ function App() {
                   </div>
 
                   {otpChallenge ? (
-                    <div className="otp-box">
+                    <div className='otp-box'>
                       <label>
                         <span>Enter OTP</span>
                         <input
                           value={otpCode}
                           onChange={(event) => setOtpCode(event.target.value)}
-                          placeholder="6-digit code"
+                          placeholder='6-digit code'
                         />
                       </label>
                       {otpChallenge.devCode && session?.devOtpVisible !== false ? (
-                        <p className="helper-copy">
+                        <p className='helper-copy'>
                           Dev code: <strong>{otpChallenge.devCode}</strong>
                         </p>
                       ) : null}
-                      <button type="button" onClick={handleVerifyOtp}>
+                      <button type='button' onClick={handleVerifyOtp}>
                         Verify and sign in
                       </button>
                     </div>
                   ) : null}
 
-                  <div className="oauth-stack">
+                  <div className='oauth-stack'>
                   {['google', 'facebook'].map((provider) => {
                     const enabled = oauthProviders.includes(provider)
                     return (
@@ -481,22 +481,22 @@ function App() {
                       </a>
                     )
                   })}
-                  <p className="helper-copy">
+                  <p className='helper-copy'>
                     Configure Google or Facebook OAuth credentials on the backend to
                     enable social sign-in.
                   </p>
                 </div>
               </>
             ) : (
-              <div className="signed-in-note">
+              <div className='signed-in-note'>
                 <p>Signed in as {session.user.displayName}.</p>
                 <p>Reviews, replies, and votes are now enabled.</p>
               </div>
             )}
           </section>
 
-          <section className="panel">
-            <div className="section-head">
+          <section className='panel'>
+            <div className='section-head'>
               <h2>Search</h2>
               <span>State → city → locality</span>
             </div>
@@ -507,7 +507,7 @@ function App() {
                 value={selectedState}
                 onChange={(event) => handleStateChange(event.target.value)}
               >
-                <option value="">All states</option>
+                <option value=''>All states</option>
                 {states.map((state) => (
                   <option key={state} value={state}>
                     {state}
@@ -523,7 +523,7 @@ function App() {
                 onChange={(event) => handleCityChange(event.target.value)}
                 disabled={!selectedState}
               >
-                <option value="">All cities</option>
+                <option value=''>All cities</option>
                 {cities.map((city) => (
                   <option key={city} value={city}>
                     {city}
@@ -539,7 +539,7 @@ function App() {
                 onChange={(event) => setSelectedLocality(event.target.value)}
                 disabled={!selectedCity}
               >
-                <option value="">All localities</option>
+                <option value=''>All localities</option>
                 {localities.map((locality) => (
                   <option key={locality} value={locality}>
                     {locality}
@@ -548,22 +548,22 @@ function App() {
               </select>
             </label>
 
-            <button type="button" onClick={handleSearch}>
+            <button type='button' onClick={handleSearch}>
               {loadingSearch ? 'Searching...' : 'Search properties'}
             </button>
           </section>
 
-          <section className="results-band">
-            <div className="section-head">
+          <section className='results-band'>
+            <div className='section-head'>
               <h2>Properties</h2>
               <span>{properties.length} listed</span>
             </div>
 
-            <div className="results-list">
+            <div className='results-list'>
               {properties.map((property) => (
                 <button
                   key={property.id}
-                  type="button"
+                  type='button'
                   className={
                     selectedPropertyId === property.id
                       ? 'property-tile active'
@@ -571,7 +571,7 @@ function App() {
                   }
                   onClick={() => setSelectedPropertyId(property.id)}
                 >
-                  <div className="tile-topline">
+                  <div className='tile-topline'>
                     <strong>{property.title}</strong>
                     <span>{property.scorecard.overallScore}/100</span>
                   </div>
@@ -584,57 +584,57 @@ function App() {
               ))}
 
               {properties.length === 0 ? (
-                <div className="empty-state">No properties matched the selected area.</div>
+                <div className='empty-state'>No properties matched the selected area.</div>
               ) : null}
             </div>
           </section>
         </aside>
 
-        <section className="detail-band">
-          {error ? <div className="banner error">{error}</div> : null}
-          {status ? <div className="banner success">{status}</div> : null}
+        <section className='detail-band'>
+          {error ? <div className='banner error'>{error}</div> : null}
+          {status ? <div className='banner success'>{status}</div> : null}
 
           {loadingDetail ? (
-            <div className="empty-state">Loading property detail...</div>
+            <div className='empty-state'>Loading property detail...</div>
           ) : propertyDetail ? (
             <>
-              <section className="summary-strip">
+              <section className='summary-strip'>
                 <div>
-                  <p className="eyebrow">{propertyDetail.propertyType}</p>
+                  <p className='eyebrow'>{propertyDetail.propertyType}</p>
                   <h2>{propertyDetail.title}</h2>
-                  <p className="address-line">
+                  <p className='address-line'>
                     {propertyDetail.addressLine1}, {propertyDetail.locality},{' '}
                     {propertyDetail.city}, {propertyDetail.state}
                   </p>
-                  <p className="summary-copy">{propertyDetail.highlights}</p>
+                  <p className='summary-copy'>{propertyDetail.highlights}</p>
                 </div>
 
-                <div className="score-row">
-                  <div className="score-chip">
+                <div className='score-row'>
+                  <div className='score-chip'>
                     <span>Overall</span>
                     <strong>{propertyDetail.scorecard.overallScore}</strong>
                   </div>
-                  <div className="score-chip">
+                  <div className='score-chip'>
                     <span>Landlord</span>
                     <strong>{propertyDetail.scorecard.landlordScore}</strong>
                   </div>
-                  <div className="score-chip">
+                  <div className='score-chip'>
                     <span>Property</span>
                     <strong>{propertyDetail.scorecard.propertyScore}</strong>
                   </div>
-                  <div className="score-chip accent">
+                  <div className='score-chip accent'>
                     <span>Recommendation</span>
                     <strong>{propertyDetail.scorecard.recommendation}</strong>
                   </div>
                 </div>
               </section>
 
-              <section className="landlord-band">
-                <div className="section-head">
+              <section className='landlord-band'>
+                <div className='section-head'>
                   <h2>Landlord profile</h2>
                   <span>{propertyDetail.landlord.name}</span>
                 </div>
-                <div className="landlord-grid">
+                <div className='landlord-grid'>
                   <p>
                     <strong>Email:</strong> {propertyDetail.landlord.email ?? 'Not shared'}
                   </p>
@@ -642,14 +642,14 @@ function App() {
                     <strong>Phone:</strong>{' '}
                     {propertyDetail.landlord.phoneNumber ?? 'Not shared'}
                   </p>
-                  <p className="landlord-note">
+                  <p className='landlord-note'>
                     {propertyDetail.landlord.managementStyle}
                   </p>
                 </div>
               </section>
 
-              <section className="review-band">
-                <div className="section-head">
+              <section className='review-band'>
+                <div className='section-head'>
                   <h2>Tenant reviews</h2>
                   <span>
                     {propertyDetail.scorecard.reviewCount} reviews,{' '}
@@ -658,10 +658,10 @@ function App() {
                   </span>
                 </div>
 
-                <div className="review-list">
+                <div className='review-list'>
                   {propertyDetail.reviews.map((review) => (
-                    <article key={review.id} className="review-card">
-                      <div className="review-header">
+                    <article key={review.id} className='review-card'>
+                      <div className='review-header'>
                         <div>
                           <h3>{review.headline}</h3>
                           <p>
@@ -669,14 +669,14 @@ function App() {
                             {new Date(review.createdAt).toLocaleDateString()}
                           </p>
                         </div>
-                        <div className="rating-badges">
+                        <div className='rating-badges'>
                           <span>{review.overallRating}/5 overall</span>
                           <span>{review.depositRating}/5 deposit</span>
                           <span>{review.maintenanceRating}/5 maintenance</span>
                         </div>
                       </div>
 
-                      <div className="review-copy-grid">
+                      <div className='review-copy-grid'>
                         <section>
                           <h4>Experience</h4>
                           <p>{review.experienceSummary}</p>
@@ -699,7 +699,7 @@ function App() {
                         </section>
                         <section>
                           <h4>Signals</h4>
-                          <div className="signal-list">
+                          <div className='signal-list'>
                             <span>{review.recommended ? 'Recommended' : 'Not recommended'}</span>
                             <span>
                               {review.issuesResolved ? 'Issues resolved' : 'Issues stayed open'}
@@ -711,7 +711,7 @@ function App() {
                         </section>
                       </div>
 
-                      <div className="vote-row">
+                      <div className='vote-row'>
                         {([
                           ['HELPFUL', 'Helpful', review.votes.helpful],
                           ['SAME_ISSUE', 'Same issue', review.votes.sameIssue],
@@ -719,7 +719,7 @@ function App() {
                         ] as const).map(([type, label, count]) => (
                           <button
                             key={type}
-                            type="button"
+                            type='button'
                             className={
                               review.votes.currentUserVote === type
                                 ? 'vote-button active'
@@ -733,8 +733,8 @@ function App() {
                         ))}
                       </div>
 
-                      <div className="thread-block">
-                        <div className="thread-list">
+                      <div className='thread-block'>
+                        <div className='thread-list'>
                           {review.thread.map((comment) => (
                             <ThreadComment
                               key={comment.id}
@@ -745,13 +745,13 @@ function App() {
                         </div>
 
                         {session?.user ? (
-                          <div className="reply-form">
-                            <div className="reply-meta">
+                          <div className='reply-form'>
+                            <div className='reply-meta'>
                               <strong>Join the thread</strong>
                               {replyDrafts[review.id]?.parentLabel ? (
                                 <button
-                                  type="button"
-                                  className="ghost-button"
+                                  type='button'
+                                  className='ghost-button'
                                   onClick={() => clearReplyTarget(review.id)}
                                 >
                                   Replying to {replyDrafts[review.id]?.parentLabel}
@@ -771,9 +771,9 @@ function App() {
                                   },
                                 }))
                               }
-                              placeholder="Add context, confirm a pattern, or ask a follow-up."
+                              placeholder='Add context, confirm a pattern, or ask a follow-up.'
                             />
-                            <button type="button" onClick={() => handleReply(review.id)}>
+                            <button type='button' onClick={() => handleReply(review.id)}>
                               Post reply
                             </button>
                           </div>
@@ -784,50 +784,50 @@ function App() {
                 </div>
               </section>
 
-              <section className="composer-band">
-                <div className="section-head">
+              <section className='composer-band'>
+                <div className='section-head'>
                   <h2>Submit a review</h2>
                   <span>{session?.user ? 'Authenticated' : 'Sign in required'}</span>
                 </div>
 
                 {session?.user ? (
-                  <form className="review-form" onSubmit={handleCreateReview}>
-                    <div className="form-grid">
-                      <label className="wide">
+                  <form className='review-form' onSubmit={handleCreateReview}>
+                    <div className='form-grid'>
+                      <label className='wide'>
                         <span>Headline</span>
                         <input
                           value={reviewDraft.headline}
                           onChange={(event) =>
                             updateReviewDraft('headline', event.target.value)
                           }
-                          placeholder="Short summary of the tenancy outcome"
+                          placeholder='Short summary of the tenancy outcome'
                         />
                       </label>
 
                       <TextAreaField
-                        label="Experience summary"
+                        label='Experience summary'
                         value={reviewDraft.experienceSummary}
                         onChange={(value) =>
                           updateReviewDraft('experienceSummary', value)
                         }
                       />
                       <TextAreaField
-                        label="Problems faced"
+                        label='Problems faced'
                         value={reviewDraft.problemsFaced}
                         onChange={(value) => updateReviewDraft('problemsFaced', value)}
                       />
                       <TextAreaField
-                        label="How helpful was the landlord?"
+                        label='How helpful was the landlord?'
                         value={reviewDraft.landlordSupport}
                         onChange={(value) => updateReviewDraft('landlordSupport', value)}
                       />
                       <TextAreaField
-                        label="Termination or renewal"
+                        label='Termination or renewal'
                         value={reviewDraft.leaseClosure}
                         onChange={(value) => updateReviewDraft('leaseClosure', value)}
                       />
                       <TextAreaField
-                        label="Security deposit outcome"
+                        label='Security deposit outcome'
                         value={reviewDraft.securityDepositOutcome}
                         onChange={(value) =>
                           updateReviewDraft('securityDepositOutcome', value)
@@ -835,45 +835,45 @@ function App() {
                       />
                     </div>
 
-                    <div className="slider-grid">
+                    <div className='slider-grid'>
                       <RatingSlider
-                        label="Overall"
+                        label='Overall'
                         value={reviewDraft.overallRating}
                         onChange={(value) => updateReviewDraft('overallRating', value)}
                       />
                       <RatingSlider
-                        label="Landlord"
+                        label='Landlord'
                         value={reviewDraft.landlordRating}
                         onChange={(value) => updateReviewDraft('landlordRating', value)}
                       />
                       <RatingSlider
-                        label="Property"
+                        label='Property'
                         value={reviewDraft.propertyRating}
                         onChange={(value) => updateReviewDraft('propertyRating', value)}
                       />
                       <RatingSlider
-                        label="Maintenance"
+                        label='Maintenance'
                         value={reviewDraft.maintenanceRating}
                         onChange={(value) =>
                           updateReviewDraft('maintenanceRating', value)
                         }
                       />
                       <RatingSlider
-                        label="Move-out"
+                        label='Move-out'
                         value={reviewDraft.moveOutRating}
                         onChange={(value) => updateReviewDraft('moveOutRating', value)}
                       />
                       <RatingSlider
-                        label="Deposit"
+                        label='Deposit'
                         value={reviewDraft.depositRating}
                         onChange={(value) => updateReviewDraft('depositRating', value)}
                       />
                     </div>
 
-                    <div className="checkbox-row">
-                      <label className="checkbox-field">
+                    <div className='checkbox-row'>
+                      <label className='checkbox-field'>
                         <input
-                          type="checkbox"
+                          type='checkbox'
                           checked={reviewDraft.recommended}
                           onChange={(event) =>
                             updateReviewDraft('recommended', event.target.checked)
@@ -881,9 +881,9 @@ function App() {
                         />
                         <span>Recommend this tenancy</span>
                       </label>
-                      <label className="checkbox-field">
+                      <label className='checkbox-field'>
                         <input
-                          type="checkbox"
+                          type='checkbox'
                           checked={reviewDraft.issuesResolved}
                           onChange={(event) =>
                             updateReviewDraft('issuesResolved', event.target.checked)
@@ -891,9 +891,9 @@ function App() {
                         />
                         <span>Core issues were resolved</span>
                       </label>
-                      <label className="checkbox-field">
+                      <label className='checkbox-field'>
                         <input
-                          type="checkbox"
+                          type='checkbox'
                           checked={reviewDraft.wouldRentAgain}
                           onChange={(event) =>
                             updateReviewDraft('wouldRentAgain', event.target.checked)
@@ -903,17 +903,17 @@ function App() {
                       </label>
                     </div>
 
-                    <button type="submit">Publish review</button>
+                    <button type='submit'>Publish review</button>
                   </form>
                 ) : (
-                  <div className="empty-state">
+                  <div className='empty-state'>
                     Sign in with OTP or configure OAuth to add your own review.
                   </div>
                 )}
               </section>
             </>
           ) : (
-            <div className="empty-state">
+            <div className='empty-state'>
               {selectedProperty
                 ? 'Property details are not available yet.'
                 : 'Choose a property from the list to inspect the review thread.'}
@@ -945,16 +945,16 @@ function RatingSlider(props: {
   onChange: (value: number) => void
 }) {
   return (
-    <label className="slider-field">
-      <div className="slider-label">
+    <label className='slider-field'>
+      <div className='slider-label'>
         <span>{props.label}</span>
         <strong>{props.value}</strong>
       </div>
       <input
-        type="range"
-        min="1"
-        max="5"
-        step="1"
+        type='range'
+        min='1'
+        max='5'
+        step='1'
         value={props.value}
         onChange={(event) => props.onChange(Number(event.target.value))}
       />
@@ -967,23 +967,23 @@ function ThreadComment(props: {
   onReply: (comment: ReviewComment) => void
 }) {
   return (
-    <div className="comment-node">
-      <div className="comment-body">
+    <div className='comment-node'>
+      <div className='comment-body'>
         <p>
           <strong>{props.comment.author.displayName}</strong> ·{' '}
           {new Date(props.comment.createdAt).toLocaleDateString()}
         </p>
         <p>{props.comment.body}</p>
         <button
-          type="button"
-          className="ghost-button"
+          type='button'
+          className='ghost-button'
           onClick={() => props.onReply(props.comment)}
         >
           Reply
         </button>
       </div>
       {props.comment.replies.length > 0 ? (
-        <div className="comment-children">
+        <div className='comment-children'>
           {props.comment.replies.map((reply) => (
             <ThreadComment key={reply.id} comment={reply} onReply={props.onReply} />
           ))}

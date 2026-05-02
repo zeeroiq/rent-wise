@@ -61,16 +61,16 @@ export function CountriesManager({ onError, onStatus }: CountriesManagerProps) {
   }
 
   return (
-    <div className="admin-section">
+    <div className='admin-section'>
       <h3>Countries</h3>
 
-      <form onSubmit={handleCreateCountry} className="admin-form">
+      <form onSubmit={handleCreateCountry} className='admin-form'>
         <label>
           <span>Code</span>
           <input
             value={formData.code}
             onChange={(e) => setFormData({ ...formData, code: e.target.value })}
-            placeholder="US, UK, CA"
+            placeholder='US, UK, CA'
           />
         </label>
         <label>
@@ -78,29 +78,29 @@ export function CountriesManager({ onError, onStatus }: CountriesManagerProps) {
           <input
             value={formData.name}
             onChange={(e) => setFormData({ ...formData, name: e.target.value })}
-            placeholder="United States"
+            placeholder='United States'
           />
         </label>
-        <button type="submit">Add Country</button>
+        <button type='submit'>Add Country</button>
       </form>
 
-      <div className="items-list">
+      <div className='items-list'>
         {loading ? (
           <p>Loading countries...</p>
         ) : countries.length === 0 ? (
           <p>No countries found</p>
         ) : (
           countries.map((country) => (
-            <div key={country.id} className="item-card">
-              <div className="item-header">
+            <div key={country.id} className='item-card'>
+              <div className='item-header'>
                 <div>
                   <strong>{country.name}</strong>
                   <small>{country.code}</small>
                 </div>
-                <div className="item-actions">
+                <div className='item-actions'>
                   <button
-                    type="button"
-                    className="ghost-button"
+                    type='button'
+                    className='ghost-button'
                     onClick={() =>
                       setExpandedCountryId(
                         expandedCountryId === country.id ? null : country.id,
@@ -110,8 +110,8 @@ export function CountriesManager({ onError, onStatus }: CountriesManagerProps) {
                     {expandedCountryId === country.id ? 'Hide' : 'View states'}
                   </button>
                   <button
-                    type="button"
-                    className="ghost-button danger"
+                    type='button'
+                    className='ghost-button danger'
                     onClick={() => handleDeleteCountry(country.id)}
                   >
                     Delete
@@ -119,7 +119,7 @@ export function CountriesManager({ onError, onStatus }: CountriesManagerProps) {
                 </div>
               </div>
               {expandedCountryId === country.id && (
-                <div className="item-details">
+                <div className='item-details'>
                   <p>Created: {new Date(country.createdAt).toLocaleDateString()}</p>
                 </div>
               )}
@@ -130,4 +130,3 @@ export function CountriesManager({ onError, onStatus }: CountriesManagerProps) {
     </div>
   )
 }
-

@@ -107,7 +107,7 @@ export function CitiesManager({ onError, onStatus }: CitiesManagerProps) {
   }
 
   return (
-    <div className="admin-section">
+    <div className='admin-section'>
       <h3>Cities</h3>
 
       <label>
@@ -116,7 +116,7 @@ export function CitiesManager({ onError, onStatus }: CitiesManagerProps) {
           value={selectedCountryId ?? ''}
           onChange={(e) => setSelectedCountryId(e.target.value ? Number(e.target.value) : null)}
         >
-          <option value="">Choose a country</option>
+          <option value=''>Choose a country</option>
           {countries.map((country) => (
             <option key={country.id} value={country.id}>
               {country.name}
@@ -132,7 +132,7 @@ export function CitiesManager({ onError, onStatus }: CitiesManagerProps) {
             value={selectedStateId ?? ''}
             onChange={(e) => setSelectedStateId(e.target.value ? Number(e.target.value) : null)}
           >
-            <option value="">Choose a state</option>
+            <option value=''>Choose a state</option>
             {states.map((state) => (
               <option key={state.id} value={state.id}>
                 {state.name}
@@ -144,13 +144,13 @@ export function CitiesManager({ onError, onStatus }: CitiesManagerProps) {
 
       {selectedStateId !== null && (
         <>
-          <form onSubmit={handleCreateCity} className="admin-form">
+          <form onSubmit={handleCreateCity} className='admin-form'>
             <label>
               <span>Code</span>
               <input
                 value={formData.code}
                 onChange={(e) => setFormData({ ...formData, code: e.target.value })}
-                placeholder="SF, NYC, LA"
+                placeholder='SF, NYC, LA'
               />
             </label>
             <label>
@@ -158,29 +158,29 @@ export function CitiesManager({ onError, onStatus }: CitiesManagerProps) {
               <input
                 value={formData.name}
                 onChange={(e) => setFormData({ ...formData, name: e.target.value })}
-                placeholder="San Francisco"
+                placeholder='San Francisco'
               />
             </label>
-            <button type="submit">Add City</button>
+            <button type='submit'>Add City</button>
           </form>
 
-          <div className="items-list">
+          <div className='items-list'>
             {loading ? (
               <p>Loading cities...</p>
             ) : cities.length === 0 ? (
               <p>No cities found</p>
             ) : (
               cities.map((city) => (
-                <div key={city.id} className="item-card">
-                  <div className="item-header">
+                <div key={city.id} className='item-card'>
+                  <div className='item-header'>
                     <div>
                       <strong>{city.name}</strong>
                       <small>{city.code}</small>
                     </div>
-                    <div className="item-actions">
+                    <div className='item-actions'>
                       <button
-                        type="button"
-                        className="ghost-button"
+                        type='button'
+                        className='ghost-button'
                         onClick={() =>
                           setExpandedCityId(expandedCityId === city.id ? null : city.id)
                         }
@@ -188,8 +188,8 @@ export function CitiesManager({ onError, onStatus }: CitiesManagerProps) {
                         {expandedCityId === city.id ? 'Hide' : 'Details'}
                       </button>
                       <button
-                        type="button"
-                        className="ghost-button danger"
+                        type='button'
+                        className='ghost-button danger'
                         onClick={() => handleDeleteCity(city.id)}
                       >
                         Delete
@@ -197,7 +197,7 @@ export function CitiesManager({ onError, onStatus }: CitiesManagerProps) {
                     </div>
                   </div>
                   {expandedCityId === city.id && (
-                    <div className="item-details">
+                    <div className='item-details'>
                       <p>Created: {new Date(city.createdAt).toLocaleDateString()}</p>
                     </div>
                   )}

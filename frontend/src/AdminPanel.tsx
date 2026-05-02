@@ -14,17 +14,17 @@ export function AdminPanel({ onError, onStatus }: AdminPanelProps) {
   const [activeTab, setActiveTab] = useState<AdminTab>('countries')
 
   return (
-    <div className="admin-panel">
-      <div className="admin-header">
+    <div className='admin-panel'>
+      <div className='admin-header'>
         <h2>Location Management</h2>
         <p>Manage countries, states, and cities for property listings</p>
       </div>
 
-      <div className="admin-tabs">
+      <div className='admin-tabs'>
         {(['countries', 'states', 'cities'] as const).map((tab) => (
           <button
             key={tab}
-            type="button"
+            type='button'
             className={activeTab === tab ? 'tab-button active' : 'tab-button'}
             onClick={() => setActiveTab(tab)}
           >
@@ -33,7 +33,7 @@ export function AdminPanel({ onError, onStatus }: AdminPanelProps) {
         ))}
       </div>
 
-      <div className="admin-content">
+      <div className='admin-content'>
         {activeTab === 'countries' && <CountriesManager onError={onError} onStatus={onStatus} />}
         {activeTab === 'states' && <StatesManager onError={onError} onStatus={onStatus} />}
         {activeTab === 'cities' && <CitiesManager onError={onError} onStatus={onStatus} />}
@@ -41,4 +41,3 @@ export function AdminPanel({ onError, onStatus }: AdminPanelProps) {
     </div>
   )
 }
-

@@ -88,7 +88,7 @@ export function StatesManager({ onError, onStatus }: StatesManagerProps) {
   }
 
   return (
-    <div className="admin-section">
+    <div className='admin-section'>
       <h3>States</h3>
 
       <label>
@@ -97,7 +97,7 @@ export function StatesManager({ onError, onStatus }: StatesManagerProps) {
           value={selectedCountryId ?? ''}
           onChange={(e) => setSelectedCountryId(e.target.value ? Number(e.target.value) : null)}
         >
-          <option value="">Choose a country</option>
+          <option value=''>Choose a country</option>
           {countries.map((country) => (
             <option key={country.id} value={country.id}>
               {country.name}
@@ -108,13 +108,13 @@ export function StatesManager({ onError, onStatus }: StatesManagerProps) {
 
       {selectedCountryId !== null && (
         <>
-          <form onSubmit={handleCreateState} className="admin-form">
+          <form onSubmit={handleCreateState} className='admin-form'>
             <label>
               <span>Code</span>
               <input
                 value={formData.code}
                 onChange={(e) => setFormData({ ...formData, code: e.target.value })}
-                placeholder="CA, TX, NY"
+                placeholder='CA, TX, NY'
               />
             </label>
             <label>
@@ -122,29 +122,29 @@ export function StatesManager({ onError, onStatus }: StatesManagerProps) {
               <input
                 value={formData.name}
                 onChange={(e) => setFormData({ ...formData, name: e.target.value })}
-                placeholder="California"
+                placeholder='California'
               />
             </label>
-            <button type="submit">Add State</button>
+            <button type='submit'>Add State</button>
           </form>
 
-          <div className="items-list">
+          <div className='items-list'>
             {loading ? (
               <p>Loading states...</p>
             ) : states.length === 0 ? (
               <p>No states found</p>
             ) : (
               states.map((state) => (
-                <div key={state.id} className="item-card">
-                  <div className="item-header">
+                <div key={state.id} className='item-card'>
+                  <div className='item-header'>
                     <div>
                       <strong>{state.name}</strong>
                       <small>{state.code}</small>
                     </div>
-                    <div className="item-actions">
+                    <div className='item-actions'>
                       <button
-                        type="button"
-                        className="ghost-button"
+                        type='button'
+                        className='ghost-button'
                         onClick={() =>
                           setExpandedStateId(expandedStateId === state.id ? null : state.id)
                         }
@@ -152,8 +152,8 @@ export function StatesManager({ onError, onStatus }: StatesManagerProps) {
                         {expandedStateId === state.id ? 'Hide' : 'Details'}
                       </button>
                       <button
-                        type="button"
-                        className="ghost-button danger"
+                        type='button'
+                        className='ghost-button danger'
                         onClick={() => handleDeleteState(state.id)}
                       >
                         Delete
@@ -161,7 +161,7 @@ export function StatesManager({ onError, onStatus }: StatesManagerProps) {
                     </div>
                   </div>
                   {expandedStateId === state.id && (
-                    <div className="item-details">
+                    <div className='item-details'>
                       <p>Created: {new Date(state.createdAt).toLocaleDateString()}</p>
                     </div>
                   )}
