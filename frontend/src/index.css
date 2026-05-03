@@ -1,27 +1,100 @@
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+@layer base {
+  :root {
+    --background: 0 0% 100%;
+    --foreground: 0 0% 12%;
+
+    --card: 0 0% 100%;
+    --card-foreground: 0 0% 12%;
+
+    --popover: 0 0% 100%;
+    --popover-foreground: 0 0% 12%;
+
+    --muted: 0 0% 37%;
+    --muted-foreground: 0 0% 100%;
+
+    --accent: 179 100% 32%;
+    --accent-foreground: 0 0% 100%;
+
+    --destructive: 0 84% 60%;
+    --destructive-foreground: 0 0% 100%;
+
+    --border: 0 0% 85%;
+    --input: 0 0% 97%;
+    --ring: 179 100% 32%;
+
+    --radius: 0.5rem;
+
+    /* RentWise brand colors */
+    --primary: 179 100% 32%;
+    --primary-foreground: 0 0% 100%;
+
+    --secondary: 11 60% 45%;
+    --secondary-foreground: 0 0% 100%;
+
+    --surface: 39 100% 97%;
+    --surface-strong: 39 76% 95%;
+    --line: 24 25% 83%;
+    --ink: 110 7% 15%;
+    --teal: 179 100% 32%;
+    --teal-soft: 179 44% 88%;
+    --clay: 14 57% 49%;
+    --clay-soft: 14 73% 88%;
+    --olive: 80 16% 41%;
+    --olive-soft: 80 21% 88%;
+    --shadow: 0 18px 40px rgb(67 49 27 / 0.08);
+  }
+
+  .dark {
+    --background: 0 0% 12%;
+    --foreground: 0 0% 98%;
+
+    --card: 0 0% 18%;
+    --card-foreground: 0 0% 98%;
+
+    --popover: 0 0% 18%;
+    --popover-foreground: 0 0% 98%;
+
+    --muted: 0 0% 63%;
+    --muted-foreground: 0 0% 18%;
+
+    --accent: 179 100% 42%;
+    --accent-foreground: 0 0% 12%;
+
+    --destructive: 0 84% 60%;
+    --destructive-foreground: 0 0% 100%;
+
+    --border: 0 0% 20%;
+    --input: 0 0% 15%;
+    --ring: 179 100% 42%;
+
+    --surface: 110 7% 20%;
+    --surface-strong: 110 7% 28%;
+  }
+}
+
+@layer base {
+  * {
+    @apply border-border;
+  }
+
+  body {
+    @apply bg-background text-foreground;
+  }
+}
+
+/* Preserve existing RentWise styles */
 :root {
-  font-family: 'Avenir Next', 'Segoe UI', sans-serif;
+  font-family: 'Avenir Next', 'Segoe UI', 'Inter', sans-serif;
   line-height: 1.5;
   font-weight: 400;
-  color: #1f2624;
-  background:
-    radial-gradient(circle at top left, rgba(230, 168, 74, 0.24), transparent 26%),
-    linear-gradient(180deg, #efe8de 0%, #f7f2ea 38%, #f4efe8 100%);
   font-synthesis: none;
   text-rendering: optimizeLegibility;
   -webkit-font-smoothing: antialiased;
   -moz-osx-font-smoothing: grayscale;
-  --surface: #fff9f1;
-  --surface-strong: #f5ecdf;
-  --line: #d7cbbd;
-  --ink: #1f2624;
-  --muted: #5f6a66;
-  --teal: #145b52;
-  --teal-soft: #d9ece8;
-  --clay: #b75d3f;
-  --clay-soft: #f1dfd6;
-  --olive: #687345;
-  --olive-soft: #e4ead8;
-  --shadow: 0 18px 40px rgba(67, 49, 27, 0.08);
 }
 
 * {

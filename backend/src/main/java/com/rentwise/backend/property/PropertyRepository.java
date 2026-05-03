@@ -1,7 +1,11 @@
 package com.rentwise.backend.property;
 
+import com.rentwise.backend.landlord.Landlord;
+import com.rentwise.backend.user.AppUser;
 import java.util.List;
 import java.util.Optional;
+import org.springframework.data.domain.Page;
+import org.springframework.data.domain.Pageable;
 import org.springframework.data.jpa.repository.JpaRepository;
 import org.springframework.data.jpa.repository.Query;
 import org.springframework.data.repository.query.Param;
@@ -53,4 +57,17 @@ public interface PropertyRepository extends JpaRepository<Property, Long> {
             where p.id = :id
             """)
     Optional<Property> findDetailedById(@Param("id") Long id);
+
+    // New query methods for property status and filtering
+    Page<Property> findByStatus(PropertyStatus status, Pageable pageable);
+
+    Page<Property> findByCreatedBy(AppUser createdBy, Pageable pageable);
+
+    Page<Property> findByLandlord(Landlord landlord, Pageable pageable);
+
+    List<Property> findByCityContainingIgnoreCaseOrLocalityContainingIgnoreCaseOrTitleContainingIgnoreCase(
+            String city,
+            String locality,
+            String title
+    );
 }

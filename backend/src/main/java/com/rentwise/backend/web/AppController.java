@@ -35,7 +35,7 @@ public class AppController {
         return appService.localities(state, city);
     }
 
-    @GetMapping("/properties")
+    @GetMapping("/properties/filter")
     public List<PropertyCardDto> search(
             @RequestParam(required = false) String state,
             @RequestParam(required = false) String city,

@@ -1,5 +1,9 @@
 export type AuthChannel = 'EMAIL' | 'MOBILE'
 export type ReviewVoteType = 'HELPFUL' | 'NOT_HELPFUL' | 'SAME_ISSUE'
+export type PropertyStatus = 'PENDING_VERIFICATION' | 'ACTIVE' | 'ARCHIVED'
+export type PropertyCondition = 'EXCELLENT' | 'GOOD' | 'FAIR' | 'POOR'
+export type FurnishingType = 'UNFURNISHED' | 'SEMI_FURNISHED' | 'FULLY_FURNISHED'
+export type OccupancyType = 'SINGLE' | 'FAMILY' | 'COMMERCIAL'
 
 export interface SessionUser {
   id: number
@@ -99,6 +103,14 @@ export interface PropertyDetail {
   landlord: Landlord
   scorecard: Scorecard
   reviews: Review[]
+  status?: PropertyStatus
+  condition?: PropertyCondition
+  furnishingType?: FurnishingType
+  occupancyType?: OccupancyType
+  yearBuilt?: number
+  totalArea?: number
+  bedroomCount?: number
+  bathroomCount?: number
 }
 
 export interface OtpChallenge {
@@ -165,5 +177,25 @@ export interface CreateCityCommand {
   stateId: number
   code: string
   name: string
+}
+
+export interface PropertyOnboarding {
+  title: string
+  propertyType: string
+  addressLine1: string
+  addressLine2?: string
+  locality: string
+  city: string
+  state: string
+  postalCode?: string
+  highlights?: string
+  status?: PropertyStatus
+  condition?: PropertyCondition
+  furnishingType?: FurnishingType
+  occupancyType?: OccupancyType
+  yearBuilt?: number
+  totalArea?: number
+  bedroomCount?: number
+  bathroomCount?: number
 }
 

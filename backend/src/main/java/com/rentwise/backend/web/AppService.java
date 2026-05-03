@@ -65,22 +65,20 @@ public class AppService {
     @Transactional(readOnly = true)
     public List<PropertyCardDto> search(String state, String city, String locality) {
         return propertyRepository.search(normalize(state), normalize(city), normalize(locality)).stream()
-                .map(property -> {
-                    List<Review> reviews = reviewRepository.findByPropertyIdOrderByCreatedAtDesc(property.getId());
-                    return new PropertyCardDto(
-                            property.getId(),
-                            property.getTitle(),
-                            property.getPropertyType(),
-                            property.getAddressLine1(),
-                            property.getLocality(),
-                            property.getCity(),
-                            property.getState(),
-                            property.getPostalCode(),
-                            property.getHighlights(),
-                            property.getLandlord().getName(),
-                            buildScorecard(reviews, Map.of())
-                    );
-                })
+                .map(property -> new PropertyCardDto(
+                        property.getId(),
+                        property.getTitle(),
+                        property.getPropertyType(),
+                        property.getAddressLine1(),
+                        property.getLocality(),
+                        property.getCity(),
+                        property.getState(),
+                        property.getPostalCode(),
+                        property.getHighlights(),
+                        property.getLandlord().getName(),
+                        property.getStatus(),
+                        property.getOnboardingDate()
+                ))
                 .toList();
     }
 
@@ -187,9 +185,24 @@ public class AppService {
                 property.getState(),
                 property.getPostalCode(),
                 property.getHighlights(),
+                property.getOnboardingDate(),
+                property.getExitDate(),
+                property.getMonthlyRent(),
+                property.getDepositAmount(),
+                property.getPropertyConditionOnEntry(),
+                property.getPropertyConditionOnExit(),
+                property.getAmenities(),
+                property.getFurnishingType(),
+                property.getOccupancyType(),
+                property.getStatus(),
+                property.getCreatedAt(),
+                property.getUpdatedAt(),
                 mapLandlord(property.getLandlord()),
                 buildScorecard(reviews, votesByReviewId),
-                reviewDtos
+                reviewDtos,
+                property.getCreatedBy() != null ? toSessionUser(property.getCreatedBy()) : null,
+                property.getVerifiedBy() != null ? toSessionUser(property.getVerifiedBy()) : null,
+                property.getVerifiedAt()
         );
     }
 
