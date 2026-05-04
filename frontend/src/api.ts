@@ -107,11 +107,14 @@ export const api = {
     locality?: string
   }) {
     const params = new URLSearchParams()
+    params.set('page', '0')
+    params.set('size', '100')
     if (filters.state) params.set('state', filters.state)
     if (filters.city) params.set('city', filters.city)
     if (filters.locality) params.set('locality', filters.locality)
     const query = params.toString()
-    return request<PropertyCard[]>(`/properties${query ? `?${query}` : ''}`)
+    return request<{ content: PropertyCard[] }>(`/properties${query ? `?${query}` : ''}`)
+      .then((page) => page.content ?? [])
   },
 
   fetchPropertyDetail(propertyId: number) {
