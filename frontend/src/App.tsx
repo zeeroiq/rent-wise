@@ -1,6 +1,7 @@
 import { startTransition, type FormEvent, useEffect, useMemo, useState } from 'react'
 import { api } from './api'
 import { AdminPanel } from './AdminPanel'
+import { useTheme } from './hooks/useTheme'
 import type {
   AuthChannel,
   AuthSession,
@@ -37,6 +38,7 @@ type ReplyState = {
 }
 
 function App() {
+  const { themePreference, resolvedTheme, setThemePreference } = useTheme()
   const [session, setSession] = useState<AuthSession | null>(null)
   const [authChannel, setAuthChannel] = useState<AuthChannel>('EMAIL')
   const [displayName, setDisplayName] = useState('')
@@ -352,6 +354,27 @@ function App() {
           <div className='status-item'>
             <span className='status-label'>Backend</span>
             <code>{api.backendBaseUrl}</code>
+          </div>
+          <div className='session-badge'>
+            <strong>Theme</strong>
+            <span className='status-label'>
+              {themePreference === 'system'
+                ? `System (${resolvedTheme})`
+                : themePreference}
+            </span>
+            <div className='segmented-control three' role='group' aria-label='Theme'>
+              {(['system', 'light', 'dark'] as const).map((mode) => (
+                <button
+                  key={mode}
+                  type='button'
+                  className={themePreference === mode ? 'segment active' : 'segment'}
+                  onClick={() => setThemePreference(mode)}
+                >
+                  {mode[0]!.toUpperCase()}
+                  {mode.slice(1)}
+                </button>
+              ))}
+            </div>
           </div>
           {session?.user ? (
             <div className='session-badge'>

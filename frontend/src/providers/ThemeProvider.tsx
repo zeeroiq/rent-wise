@@ -1,39 +1,64 @@
-import React, { createContext, useEffect, useState } from 'react'
+import React, { useEffect, useMemo, useState } from 'react'
+import { ThemeContext, type Theme, type ThemePreference } from './themeContext'
 
-type Theme = 'light' | 'dark'
-
-interface ThemeContextType {
-  theme: Theme
-  toggleTheme: () => void
+function getSystemTheme(): Theme {
+  return window.matchMedia('(prefers-color-scheme: dark)').matches ? 'dark' : 'light'
 }
 
-export const ThemeContext = createContext<ThemeContextType | undefined>(undefined)
+function readStoredPreference(): ThemePreference {
+  const stored = localStorage.getItem('theme')
+  if (stored === 'light' || stored === 'dark' || stored === 'system') {
+    return stored
+  }
+  return 'system'
+}
 
 export function ThemeProvider({ children }: { children: React.ReactNode }) {
-  const [theme, setTheme] = useState<Theme>(() => {
-    const stored = localStorage.getItem('theme')
-    if (stored === 'light' || stored === 'dark') {
-      return stored
-    }
-    return window.matchMedia('(prefers-color-scheme: dark)').matches ? 'dark' : 'light'
-  })
+  const [themePreference, setThemePreference] = useState<ThemePreference>(() =>
+    readStoredPreference(),
+  )
+  const [systemTheme, setSystemTheme] = useState<Theme>(() => getSystemTheme())
+
+  const resolvedTheme = useMemo<Theme>(() => {
+    if (themePreference === 'system') return systemTheme
+    return themePreference
+  }, [systemTheme, themePreference])
 
   useEffect(() => {
-    localStorage.setItem('theme', theme)
+    localStorage.setItem('theme', themePreference)
+  }, [themePreference])
+
+  useEffect(() => {
+    const media = window.matchMedia('(prefers-color-scheme: dark)')
+    const sync = () => setSystemTheme(media.matches ? 'dark' : 'light')
+    sync()
+    media.addEventListener('change', sync)
+    return () => media.removeEventListener('change', sync)
+  }, [])
+
+  useEffect(() => {
     const root = document.documentElement
-    if (theme === 'dark') {
+    root.dataset.theme = resolvedTheme
+    root.style.colorScheme = resolvedTheme
+    if (resolvedTheme === 'dark') {
       root.classList.add('dark')
     } else {
       root.classList.remove('dark')
     }
-  }, [theme])
+  }, [resolvedTheme])
 
   const toggleTheme = () => {
-    setTheme((prev) => (prev === 'light' ? 'dark' : 'light'))
+    // Keep toggle semantics: flip between explicit light/dark, leaving "system" behind.
+    setThemePreference((prev) => {
+      const current = prev === 'system' ? systemTheme : prev
+      return current === 'light' ? 'dark' : 'light'
+    })
   }
 
   return (
-    <ThemeContext.Provider value={{ theme, toggleTheme }}>
+    <ThemeContext.Provider
+      value={{ themePreference, resolvedTheme, setThemePreference, toggleTheme }}
+    >
       {children}
     </ThemeContext.Provider>
   )

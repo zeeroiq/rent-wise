@@ -300,6 +300,10 @@ label span {
   gap: 0.5rem;
 }
 
+.segmented-control.three {
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+}
+
 .segment {
   background: hsl(var(--surface));
   color: hsl(var(--teal));
