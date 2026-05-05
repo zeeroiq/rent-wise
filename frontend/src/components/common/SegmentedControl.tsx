@@ -25,7 +25,7 @@ export function SegmentedControl<T extends string>({
       {...props}
       role='group'
       className={cn(
-        'inline-flex w-full rounded-lg border border-input bg-card p-1 text-sm shadow-sm',
+        'inline-flex w-full rounded-lg border border-input bg-background p-1 text-sm shadow-sm',
         className,
       )}
     >
@@ -37,8 +37,8 @@ export function SegmentedControl<T extends string>({
           className={cn(
             'flex-1 rounded-md px-3 py-1.5 font-medium transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 focus-visible:ring-offset-background',
             option.value === value
-              ? 'bg-accent text-accent-foreground'
-              : 'text-muted-foreground hover:text-foreground',
+              ? 'bg-primary text-primary-foreground shadow-sm'
+              : 'text-foreground/80 hover:bg-accent/40 hover:text-foreground',
           )}
         >
           {option.label}
@@ -47,4 +47,3 @@ export function SegmentedControl<T extends string>({
     </div>
   )
 }
-

@@ -6,6 +6,15 @@ export { Textarea, type TextareaProps } from './Textarea'
 export { Label } from './Label'
 export { SegmentedControl } from './SegmentedControl'
 export {
+  DropdownMenu,
+  DropdownMenuTrigger,
+  DropdownMenuContent,
+  DropdownMenuItem,
+  DropdownMenuSeparator,
+  DropdownMenuRadioGroup,
+  DropdownMenuRadioItem,
+} from './DropdownMenu'
+export {
   Dialog,
   DialogPortal,
   DialogOverlay,

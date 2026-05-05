@@ -12,7 +12,7 @@ import {
   Textarea,
   SegmentedControl,
 } from '@/components/common'
-import { ThemeControl } from '@/components/layout'
+import { ThemeMenu } from '@/components/layout'
 import type {
   AuthChannel,
   AuthSession,
@@ -368,7 +368,7 @@ function App() {
   }
 
   const nativeSelectClassName =
-    'flex h-10 w-full rounded-md border border-input bg-background px-3 py-2 text-sm ring-offset-background focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 disabled:cursor-not-allowed disabled:opacity-50'
+    'flex h-10 w-full appearance-none rounded-md border border-input bg-background px-3 py-2 text-sm text-foreground ring-offset-background focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 disabled:cursor-not-allowed disabled:opacity-50'
 
   return (
     <div className='min-h-screen bg-background text-foreground'>
@@ -381,13 +381,12 @@ function App() {
           <h1 className='text-3xl font-semibold tracking-tight'>RentWise</h1>
         </div>
         <div className='flex w-full flex-col gap-3 sm:w-auto sm:flex-row sm:items-stretch'>
-          <div className='min-w-0 rounded-lg border border-input bg-background/60 p-3'>
-            <p className='text-xs font-medium text-muted-foreground'>Backend</p>
-            <code className='block max-w-full truncate text-xs'>{api.backendBaseUrl}</code>
-          </div>
-          <div className='w-full max-w-sm rounded-lg border border-input bg-background/60 p-3 sm:w-80'>
-            <ThemeControl />
-          </div>
+          {import.meta.env.DEV ? (
+            <div className='min-w-0 rounded-lg border border-input bg-background/60 p-3'>
+              <p className='text-xs font-medium text-muted-foreground'>Backend</p>
+              <code className='block max-w-full truncate text-xs'>{api.backendBaseUrl}</code>
+            </div>
+          ) : null}
           {session?.user ? (
             <div className='flex flex-wrap items-center justify-between gap-3 rounded-lg border border-input bg-background/60 p-3 sm:min-w-[320px] sm:flex-nowrap sm:justify-start'>
               <div className='min-w-0'>
@@ -396,6 +395,7 @@ function App() {
                   {session.user.email ?? session.user.mobileNumber}
                 </p>
               </div>
+              <ThemeMenu />
               {session.user.isAdmin && (
                 <Button
                   type='button'
@@ -418,6 +418,7 @@ function App() {
                   Sign in to submit reviews and vote
                 </p>
               </div>
+              <ThemeMenu />
               <Button
                 type='button'
                 variant='outline'
