@@ -45,15 +45,6 @@ public class PropertyController {
     }
 
     /**
-     * Get property by ID (public)
-     */
-    @GetMapping("/{id}")
-    public ResponseEntity<PropertyDetailDto> getProperty(@PathVariable Long id) {
-        PropertyDetailDto property = propertyService.getPropertyById(id);
-        return ResponseEntity.ok(property);
-    }
-
-    /**
      * Get all active properties (public)
      */
     @GetMapping

@@ -65,20 +65,32 @@ public class AppService {
     @Transactional(readOnly = true)
     public List<PropertyCardDto> search(String state, String city, String locality) {
         return propertyRepository.search(normalize(state), normalize(city), normalize(locality)).stream()
-                .map(property -> new PropertyCardDto(
-                        property.getId(),
-                        property.getTitle(),
-                        property.getPropertyType(),
-                        property.getAddressLine1(),
-                        property.getLocality(),
-                        property.getCity(),
-                        property.getState(),
-                        property.getPostalCode(),
-                        property.getHighlights(),
-                        property.getLandlord().getName(),
-                        property.getStatus(),
-                        property.getOnboardingDate()
-                ))
+                .map(property -> {
+                    List<Review> reviews = reviewRepository.findByPropertyIdOrderByCreatedAtDesc(property.getId());
+                    Map<Long, List<ReviewVote>> votesByReviewId = new HashMap<>();
+                    if (!reviews.isEmpty()) {
+                        List<ReviewVote> votes = reviewVoteRepository.findByReviewIdIn(reviews.stream().map(Review::getId).toList());
+                        for (ReviewVote vote : votes) {
+                            votesByReviewId.computeIfAbsent(vote.getReview().getId(), ignored -> new ArrayList<>()).add(vote);
+                        }
+                    }
+                    ScorecardDto scorecard = buildScorecard(reviews, votesByReviewId);
+                    return new PropertyCardDto(
+                            property.getId(),
+                            property.getTitle(),
+                            property.getPropertyType(),
+                            property.getAddressLine1(),
+                            property.getLocality(),
+                            property.getCity(),
+                            property.getState(),
+                            property.getPostalCode(),
+                            property.getHighlights(),
+                            property.getLandlord().getName(),
+                            property.getStatus(),
+                            property.getOnboardingDate(),
+                            scorecard
+                    );
+                })
                 .toList();
     }
 

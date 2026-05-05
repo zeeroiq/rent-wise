@@ -2,6 +2,8 @@ package com.rentwise.backend.property;
 
 import com.rentwise.backend.landlord.Landlord;
 import com.rentwise.backend.landlord.LandlordRepository;
+import com.rentwise.backend.review.Review;
+import com.rentwise.backend.review.ReviewRepository;
 import com.rentwise.backend.user.AppUser;
 import com.rentwise.backend.web.PropertyDetailDto;
 import com.rentwise.backend.web.PropertyCardDto;
@@ -25,10 +27,12 @@ public class PropertyService {
 
     private final PropertyRepository propertyRepository;
     private final LandlordRepository landlordRepository;
+    private final ReviewRepository reviewRepository;
 
-    public PropertyService(PropertyRepository propertyRepository, LandlordRepository landlordRepository) {
+    public PropertyService(PropertyRepository propertyRepository, LandlordRepository landlordRepository, ReviewRepository reviewRepository) {
         this.propertyRepository = propertyRepository;
         this.landlordRepository = landlordRepository;
+        this.reviewRepository = reviewRepository;
     }
 
     /**
@@ -267,6 +271,8 @@ public class PropertyService {
     }
 
     private PropertyCardDto toCardDto(Property property) {
+        ScorecardDto scorecard = calculateScorecard(property.getId());
+        
         return new PropertyCardDto(
                 property.getId(),
                 property.getTitle(),
@@ -279,7 +285,36 @@ public class PropertyService {
                 property.getHighlights(),
                 property.getLandlord().getName(),
                 property.getStatus(),
-                property.getOnboardingDate()
+                property.getOnboardingDate(),
+                scorecard
+        );
+    }
+    
+    private ScorecardDto calculateScorecard(Long propertyId) {
+        List<Review> reviews = reviewRepository.findByPropertyIdOrderByCreatedAtDesc(propertyId);
+        
+        if (reviews.isEmpty()) {
+            return new ScorecardDto(0, 0, 0, "No reviews yet", 0, 0, 0);
+        }
+        
+        int overallScore = (int) reviews.stream().mapToInt(Review::getOverallRating).average().orElse(0);
+        int landlordScore = (int) reviews.stream().mapToInt(Review::getLandlordRating).average().orElse(0);
+        int propertyScore = (int) reviews.stream().mapToInt(Review::getPropertyRating).average().orElse(0);
+        
+        long recommendedCount = reviews.stream().filter(Review::isRecommended).count();
+        String recommendation = recommendedCount > reviews.size() / 2 ? "Recommended" : "Mixed Reviews";
+        
+        int unresolvedIssueCount = (int) reviews.stream().filter(r -> !r.isIssuesResolved()).count();
+        int depositDisputeCount = (int) reviews.stream().filter(r -> r.getDepositRating() < 3).count();
+        
+        return new ScorecardDto(
+                overallScore,
+                landlordScore,
+                propertyScore,
+                recommendation,
+                reviews.size(),
+                unresolvedIssueCount,
+                depositDisputeCount
         );
     }
 }

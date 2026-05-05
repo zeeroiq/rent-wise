@@ -15,6 +15,7 @@ public record PropertyCardDto(
         String highlights,
         String landlordName,
         PropertyStatus status,
-        LocalDate onboardingDate
+        LocalDate onboardingDate,
+        ScorecardDto scorecard
 ) {
 }
