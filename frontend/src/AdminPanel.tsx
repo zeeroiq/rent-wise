@@ -1,4 +1,5 @@
 import { useState } from 'react'
+import { SegmentedControl } from '@/components/common'
 import { CountriesManager } from './CountriesManager'
 import { StatesManager } from './StatesManager'
 import { CitiesManager } from './CitiesManager'
@@ -21,16 +22,16 @@ export function AdminPanel({ onError, onStatus }: AdminPanelProps) {
       </div>
 
       <div className='admin-tabs'>
-        {(['countries', 'states', 'cities'] as const).map((tab) => (
-          <button
-            key={tab}
-            type='button'
-            className={activeTab === tab ? 'tab-button active' : 'tab-button'}
-            onClick={() => setActiveTab(tab)}
-          >
-            {tab.charAt(0).toUpperCase() + tab.slice(1)}
-          </button>
-        ))}
+        <SegmentedControl
+          aria-label='Admin section'
+          options={[
+            { value: 'countries', label: 'Countries' },
+            { value: 'states', label: 'States' },
+            { value: 'cities', label: 'Cities' },
+          ]}
+          value={activeTab}
+          onChange={setActiveTab}
+        />
       </div>
 
       <div className='admin-content'>

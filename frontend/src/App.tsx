@@ -1,7 +1,18 @@
-import { startTransition, type FormEvent, useEffect, useMemo, useState } from 'react'
+import { startTransition, type FormEvent, useEffect, useMemo, useRef, useState } from 'react'
 import { api } from './api'
 import { AdminPanel } from './AdminPanel'
-import { useTheme } from './hooks/useTheme'
+import {
+  Button,
+  Dialog,
+  DialogContent,
+  DialogDescription,
+  DialogHeader,
+  DialogTitle,
+  Input,
+  Textarea,
+  SegmentedControl,
+} from '@/components/common'
+import { ThemeControl } from '@/components/layout'
 import type {
   AuthChannel,
   AuthSession,
@@ -38,8 +49,10 @@ type ReplyState = {
 }
 
 function App() {
-  const { themePreference, resolvedTheme, setThemePreference } = useTheme()
   const [session, setSession] = useState<AuthSession | null>(null)
+  const [sessionLoaded, setSessionLoaded] = useState(false)
+  const [loginOpen, setLoginOpen] = useState(false)
+  const initialLoginDecision = useRef(false)
   const [authChannel, setAuthChannel] = useState<AuthChannel>('EMAIL')
   const [displayName, setDisplayName] = useState('')
   const [destination, setDestination] = useState('')
@@ -93,6 +106,11 @@ function App() {
         }
 
         setSession(sessionData)
+        setSessionLoaded(true)
+        if (!initialLoginDecision.current) {
+          setLoginOpen(!sessionData.user)
+          initialLoginDecision.current = true
+        }
         setStates(statesData)
         startTransition(() => {
           setProperties(propertiesData)
@@ -104,6 +122,11 @@ function App() {
       } catch (caughtError) {
         if (!cancelled) {
           reportError(caughtError)
+          setSessionLoaded(true)
+          if (!initialLoginDecision.current) {
+            setLoginOpen(true)
+            initialLoginDecision.current = true
+          }
         }
       }
     })()
@@ -231,6 +254,7 @@ function App() {
       setOtpCode('')
       setDestination('')
       setStatus('Signed in')
+      setLoginOpen(false)
       if (selectedPropertyId != null) {
         const detail = await api.fetchPropertyDetail(selectedPropertyId)
         startTransition(() => setPropertyDetail(detail))
@@ -343,192 +367,194 @@ function App() {
     setReviewDraft((current) => ({ ...current, [key]: value }))
   }
 
+  const nativeSelectClassName =
+    'flex h-10 w-full rounded-md border border-input bg-background px-3 py-2 text-sm ring-offset-background focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 disabled:cursor-not-allowed disabled:opacity-50'
+
   return (
-    <div className='app-shell'>
-      <header className='topbar'>
-        <div>
-          <p className='eyebrow'>Tenant intelligence platform</p>
-          <h1>RentWise</h1>
+    <div className='min-h-screen bg-background text-foreground'>
+      <div className='mx-auto flex min-h-screen max-w-7xl flex-col gap-6 px-4 py-6 sm:px-6 lg:px-8'>
+      <header className='flex flex-col gap-4 rounded-xl border border-border bg-card/80 p-5 shadow-sm backdrop-blur supports-[backdrop-filter]:bg-card/60 sm:flex-row sm:items-end sm:justify-between'>
+        <div className='space-y-1'>
+          <p className='text-xs font-semibold uppercase tracking-wider text-muted-foreground'>
+            Tenant intelligence platform
+          </p>
+          <h1 className='text-3xl font-semibold tracking-tight'>RentWise</h1>
         </div>
-        <div className='status-strip'>
-          <div className='status-item'>
-            <span className='status-label'>Backend</span>
-            <code>{api.backendBaseUrl}</code>
+        <div className='flex w-full flex-col gap-3 sm:w-auto sm:flex-row sm:items-stretch'>
+          <div className='min-w-0 rounded-lg border border-input bg-background/60 p-3'>
+            <p className='text-xs font-medium text-muted-foreground'>Backend</p>
+            <code className='block max-w-full truncate text-xs'>{api.backendBaseUrl}</code>
           </div>
-          <div className='session-badge'>
-            <strong>Theme</strong>
-            <span className='status-label'>
-              {themePreference === 'system'
-                ? `System (${resolvedTheme})`
-                : themePreference}
-            </span>
-            <div className='segmented-control three' role='group' aria-label='Theme'>
-              {(['system', 'light', 'dark'] as const).map((mode) => (
-                <button
-                  key={mode}
-                  type='button'
-                  className={themePreference === mode ? 'segment active' : 'segment'}
-                  onClick={() => setThemePreference(mode)}
-                >
-                  {mode[0]!.toUpperCase()}
-                  {mode.slice(1)}
-                </button>
-              ))}
-            </div>
+          <div className='w-full max-w-sm rounded-lg border border-input bg-background/60 p-3 sm:w-80'>
+            <ThemeControl />
           </div>
           {session?.user ? (
-            <div className='session-badge'>
-              <strong>{session.user.displayName}</strong>
-              <span>{session.user.email ?? session.user.mobileNumber}</span>
+            <div className='flex flex-wrap items-center justify-between gap-3 rounded-lg border border-input bg-background/60 p-3 sm:min-w-[320px] sm:flex-nowrap sm:justify-start'>
+              <div className='min-w-0'>
+                <p className='truncate text-sm font-semibold'>{session.user.displayName}</p>
+                <p className='truncate text-xs text-muted-foreground'>
+                  {session.user.email ?? session.user.mobileNumber}
+                </p>
+              </div>
               {session.user.isAdmin && (
-                <button
+                <Button
                   type='button'
-                  className={showAdminPanel ? 'admin-badge active' : 'admin-badge'}
+                  variant={showAdminPanel ? 'default' : 'outline'}
+                  size='sm'
                   onClick={() => setShowAdminPanel(!showAdminPanel)}
                 >
                   Admin
-                </button>
+                </Button>
               )}
-              <button type='button' className='ghost-button' onClick={handleLogout}>
+              <Button type='button' variant='ghost' size='sm' onClick={handleLogout}>
                 Sign out
-              </button>
+              </Button>
             </div>
           ) : (
-            <div className='session-badge'>
-              <strong>Read mode</strong>
-              <span>Sign in to submit reviews and vote</span>
+            <div className='flex flex-wrap items-center justify-between gap-3 rounded-lg border border-input bg-background/60 p-3 sm:min-w-[320px] sm:flex-nowrap'>
+              <div className='min-w-0'>
+                <p className='truncate text-sm font-semibold'>Read mode</p>
+                <p className='truncate text-xs text-muted-foreground'>
+                  Sign in to submit reviews and vote
+                </p>
+              </div>
+              <Button
+                type='button'
+                variant='outline'
+                size='sm'
+                onClick={() => setLoginOpen(true)}
+                disabled={!sessionLoaded}
+              >
+                Sign in
+              </Button>
             </div>
           )}
         </div>
       </header>
 
+      <Dialog open={loginOpen} onOpenChange={setLoginOpen}>
+        <DialogContent className='sm:max-w-xl'>
+          <DialogHeader>
+            <DialogTitle>Sign in</DialogTitle>
+            <DialogDescription>
+              Use OTP or OAuth. You can close this dialog to continue in read mode.
+            </DialogDescription>
+          </DialogHeader>
+
+          <div className='space-y-4'>
+            <SegmentedControl
+              aria-label='Auth channel'
+              options={[
+                { value: 'EMAIL', label: 'Email OTP' },
+                { value: 'MOBILE', label: 'Mobile OTP' },
+              ]}
+              value={authChannel}
+              onChange={setAuthChannel}
+            />
+
+            <div className='grid gap-3 sm:grid-cols-2'>
+              <label className='space-y-1'>
+                <span className='text-xs font-medium text-muted-foreground'>Name</span>
+                <Input
+                  value={displayName}
+                  onChange={(event) => setDisplayName(event.target.value)}
+                  placeholder='Your display name'
+                />
+              </label>
+
+              <label className='space-y-1'>
+                <span className='text-xs font-medium text-muted-foreground'>
+                  {authChannel === 'EMAIL' ? 'Email' : 'Mobile'}
+                </span>
+                <Input
+                  value={destination}
+                  onChange={(event) => setDestination(event.target.value)}
+                  placeholder={
+                    authChannel === 'EMAIL' ? 'tenant@example.com' : '+1 555 000 1001'
+                  }
+                />
+              </label>
+            </div>
+
+            <div className='grid grid-cols-2 gap-3'>
+              <Button type='button' onClick={handleRequestOtp}>
+                Request OTP
+              </Button>
+              <Button
+                type='button'
+                variant='outline'
+                onClick={() => {
+                  setDestination('')
+                  setOtpChallenge(null)
+                  setOtpCode('')
+                }}
+              >
+                Reset
+              </Button>
+            </div>
+
+            {otpChallenge ? (
+              <div className='space-y-3 rounded-lg border border-input bg-card p-4'>
+                <label className='space-y-1'>
+                  <span className='text-xs font-medium text-muted-foreground'>Enter OTP</span>
+                  <Input
+                    value={otpCode}
+                    onChange={(event) => setOtpCode(event.target.value)}
+                    placeholder='6-digit code'
+                  />
+                </label>
+                {otpChallenge.devCode && session?.devOtpVisible !== false ? (
+                  <p className='text-xs text-muted-foreground'>
+                    Dev code: <strong>{otpChallenge.devCode}</strong>
+                  </p>
+                ) : null}
+                <Button type='button' onClick={handleVerifyOtp}>
+                  Verify and sign in
+                </Button>
+              </div>
+            ) : null}
+
+            <div className='space-y-2'>
+              {(['google', 'facebook'] as const).map((provider) => {
+                const enabled = oauthProviders.includes(provider)
+                const label = `Continue with ${provider === 'google' ? 'Google' : 'Facebook'}`
+                return enabled ? (
+                  <Button key={provider} asChild variant='outline' className='w-full'>
+                    <a href={api.oauthUrl(provider)}>{label}</a>
+                  </Button>
+                ) : (
+                  <Button key={provider} variant='outline' className='w-full' disabled>
+                    {label}
+                  </Button>
+                )
+              })}
+              <p className='text-xs text-muted-foreground'>
+                Configure OAuth credentials on the backend to enable social sign-in.
+              </p>
+            </div>
+          </div>
+        </DialogContent>
+      </Dialog>
+
       {showAdminPanel ? (
-        <main className='workspace admin-view'>
+        <main className='min-h-0 flex-1'>
           <AdminPanel onError={reportError} onStatus={(msg) => setStatus(msg)} />
         </main>
       ) : (
-        <main className='workspace'>
-          <aside className='left-rail'>
-            <section className='panel'>
-              <div className='section-head'>
-                <h2>Access</h2>
-                <span>{session?.user ? 'Active' : 'Guest'}</span>
-              </div>
-
-              {!session?.user ? (
-                <>
-                  <div className='segmented-control' role='tablist' aria-label='Auth channel'>
-                    {(['EMAIL', 'MOBILE'] as AuthChannel[]).map((channel) => (
-                      <button
-                        key={channel}
-                        type='button'
-                        className={authChannel === channel ? 'segment active' : 'segment'}
-                        onClick={() => setAuthChannel(channel)}
-                      >
-                        {channel === 'EMAIL' ? 'Email OTP' : 'Mobile OTP'}
-                      </button>
-                    ))}
-                  </div>
-
-                  <label>
-                    <span>Name</span>
-                    <input
-                      value={displayName}
-                      onChange={(event) => setDisplayName(event.target.value)}
-                      placeholder='Your display name'
-                    />
-                  </label>
-
-                  <label>
-                    <span>{authChannel === 'EMAIL' ? 'Email' : 'Mobile'}</span>
-                    <input
-                      value={destination}
-                      onChange={(event) => setDestination(event.target.value)}
-                      placeholder={
-                        authChannel === 'EMAIL'
-                          ? 'tenant@example.com'
-                          : '+1 555 000 1001'
-                      }
-                    />
-                  </label>
-
-                  <div className='inline-actions'>
-                    <button type='button' onClick={handleRequestOtp}>
-                      Request OTP
-                    </button>
-                    <button
-                      type='button'
-                      className='ghost-button'
-                      onClick={() => {
-                        setDestination('')
-                        setOtpChallenge(null)
-                        setOtpCode('')
-                      }}
-                    >
-                      Reset
-                    </button>
-                  </div>
-
-                  {otpChallenge ? (
-                    <div className='otp-box'>
-                      <label>
-                        <span>Enter OTP</span>
-                        <input
-                          value={otpCode}
-                          onChange={(event) => setOtpCode(event.target.value)}
-                          placeholder='6-digit code'
-                        />
-                      </label>
-                      {otpChallenge.devCode && session?.devOtpVisible !== false ? (
-                        <p className='helper-copy'>
-                          Dev code: <strong>{otpChallenge.devCode}</strong>
-                        </p>
-                      ) : null}
-                      <button type='button' onClick={handleVerifyOtp}>
-                        Verify and sign in
-                      </button>
-                    </div>
-                  ) : null}
-
-                  <div className='oauth-stack'>
-                  {['google', 'facebook'].map((provider) => {
-                    const enabled = oauthProviders.includes(provider)
-                    return (
-                      <a
-                        key={provider}
-                        href={enabled ? api.oauthUrl(provider) : undefined}
-                        className={enabled ? 'oauth-button' : 'oauth-button disabled'}
-                        aria-disabled={!enabled}
-                      >
-                        Continue with {provider === 'google' ? 'Google' : 'Facebook'}
-                      </a>
-                    )
-                  })}
-                  <p className='helper-copy'>
-                    Configure Google or Facebook OAuth credentials on the backend to
-                    enable social sign-in.
-                  </p>
-                </div>
-              </>
-            ) : (
-              <div className='signed-in-note'>
-                <p>Signed in as {session.user.displayName}.</p>
-                <p>Reviews, replies, and votes are now enabled.</p>
-              </div>
-            )}
-          </section>
-
-          <section className='panel'>
-            <div className='section-head'>
-              <h2>Search</h2>
-              <span>State → city → locality</span>
+        <main className='grid min-h-0 flex-1 gap-6 lg:grid-cols-[380px_1fr]'>
+          <aside className='space-y-6'>
+          <section className='rounded-xl border border-border bg-card p-5 shadow-sm'>
+            <div className='mb-4'>
+              <h2 className='text-base font-semibold'>Search</h2>
+              <p className='text-xs text-muted-foreground'>State → city → locality</p>
             </div>
 
             <label>
-              <span>State</span>
+              <span className='text-xs font-medium text-muted-foreground'>State</span>
               <select
                 value={selectedState}
                 onChange={(event) => handleStateChange(event.target.value)}
+                className={nativeSelectClassName}
               >
                 <option value=''>All states</option>
                 {states.map((state) => (
@@ -540,11 +566,12 @@ function App() {
             </label>
 
             <label>
-              <span>City</span>
+              <span className='text-xs font-medium text-muted-foreground'>City</span>
               <select
                 value={selectedCity}
                 onChange={(event) => handleCityChange(event.target.value)}
                 disabled={!selectedState}
+                className={nativeSelectClassName}
               >
                 <option value=''>All cities</option>
                 {cities.map((city) => (
@@ -556,11 +583,12 @@ function App() {
             </label>
 
             <label>
-              <span>Locality</span>
+              <span className='text-xs font-medium text-muted-foreground'>Locality</span>
               <select
                 value={selectedLocality}
                 onChange={(event) => setSelectedLocality(event.target.value)}
                 disabled={!selectedCity}
+                className={nativeSelectClassName}
               >
                 <option value=''>All localities</option>
                 {localities.map((locality) => (
@@ -571,9 +599,9 @@ function App() {
               </select>
             </label>
 
-            <button type='button' onClick={handleSearch}>
+            <Button type='button' onClick={handleSearch} disabled={loadingSearch}>
               {loadingSearch ? 'Searching...' : 'Search properties'}
-            </button>
+            </Button>
           </section>
 
           <section className='results-band'>
@@ -589,8 +617,8 @@ function App() {
                   type='button'
                   className={
                     selectedPropertyId === property.id
-                      ? 'property-tile active'
-                      : 'property-tile'
+                      ? 'w-full rounded-xl border border-ring bg-accent/50 p-4 text-left shadow-sm transition-colors hover:bg-accent/60'
+                      : 'w-full rounded-xl border border-input bg-background p-4 text-left shadow-sm transition-colors hover:bg-accent/30'
                   }
                   onClick={() => setSelectedPropertyId(property.id)}
                 >
@@ -740,19 +768,18 @@ function App() {
                           ['SAME_ISSUE', 'Same issue', review.votes.sameIssue],
                           ['NOT_HELPFUL', 'Not helpful', review.votes.notHelpful],
                         ] as const).map(([type, label, count]) => (
-                          <button
+                          <Button
                             key={type}
                             type='button'
-                            className={
-                              review.votes.currentUserVote === type
-                                ? 'vote-button active'
-                                : 'vote-button'
+                            variant={
+                              review.votes.currentUserVote === type ? 'default' : 'outline'
                             }
+                            size='sm'
                             disabled={!session?.user}
                             onClick={() => handleVote(review.id, type)}
                           >
                             {label} · {count}
-                          </button>
+                          </Button>
                         ))}
                       </div>
 
@@ -772,16 +799,17 @@ function App() {
                             <div className='reply-meta'>
                               <strong>Join the thread</strong>
                               {replyDrafts[review.id]?.parentLabel ? (
-                                <button
+                                <Button
                                   type='button'
-                                  className='ghost-button'
+                                  variant='ghost'
+                                  size='sm'
                                   onClick={() => clearReplyTarget(review.id)}
                                 >
                                   Replying to {replyDrafts[review.id]?.parentLabel}
-                                </button>
+                                </Button>
                               ) : null}
                             </div>
-                            <textarea
+                            <Textarea
                               value={replyDrafts[review.id]?.body ?? ''}
                               onChange={(event) =>
                                 setReplyDrafts((current) => ({
@@ -796,9 +824,9 @@ function App() {
                               }
                               placeholder='Add context, confirm a pattern, or ask a follow-up.'
                             />
-                            <button type='button' onClick={() => handleReply(review.id)}>
+                            <Button type='button' onClick={() => handleReply(review.id)}>
                               Post reply
-                            </button>
+                            </Button>
                           </div>
                         ) : null}
                       </div>
@@ -818,7 +846,7 @@ function App() {
                     <div className='form-grid'>
                       <label className='wide'>
                         <span>Headline</span>
-                        <input
+                        <Input
                           value={reviewDraft.headline}
                           onChange={(event) =>
                             updateReviewDraft('headline', event.target.value)
@@ -897,6 +925,7 @@ function App() {
                       <label className='checkbox-field'>
                         <input
                           type='checkbox'
+                          className='h-4 w-4 rounded border border-input bg-background text-primary accent-[hsl(var(--primary))]'
                           checked={reviewDraft.recommended}
                           onChange={(event) =>
                             updateReviewDraft('recommended', event.target.checked)
@@ -907,6 +936,7 @@ function App() {
                       <label className='checkbox-field'>
                         <input
                           type='checkbox'
+                          className='h-4 w-4 rounded border border-input bg-background text-primary accent-[hsl(var(--primary))]'
                           checked={reviewDraft.issuesResolved}
                           onChange={(event) =>
                             updateReviewDraft('issuesResolved', event.target.checked)
@@ -917,6 +947,7 @@ function App() {
                       <label className='checkbox-field'>
                         <input
                           type='checkbox'
+                          className='h-4 w-4 rounded border border-input bg-background text-primary accent-[hsl(var(--primary))]'
                           checked={reviewDraft.wouldRentAgain}
                           onChange={(event) =>
                             updateReviewDraft('wouldRentAgain', event.target.checked)
@@ -926,7 +957,7 @@ function App() {
                       </label>
                     </div>
 
-                    <button type='submit'>Publish review</button>
+                    <Button type='submit'>Publish review</Button>
                   </form>
                 ) : (
                   <div className='empty-state'>
@@ -943,8 +974,9 @@ function App() {
             </div>
           )}
         </section>
-      </main>
+        </main>
       )}
+      </div>
     </div>
   )
 }
@@ -956,8 +988,11 @@ function TextAreaField(props: {
 }) {
   return (
     <label>
-      <span>{props.label}</span>
-      <textarea value={props.value} onChange={(event) => props.onChange(event.target.value)} />
+      <span className='text-xs font-medium text-muted-foreground'>{props.label}</span>
+      <Textarea
+        value={props.value}
+        onChange={(event) => props.onChange(event.target.value)}
+      />
     </label>
   )
 }
@@ -980,6 +1015,7 @@ function RatingSlider(props: {
         step='1'
         value={props.value}
         onChange={(event) => props.onChange(Number(event.target.value))}
+        className='h-2 w-full cursor-pointer appearance-none rounded-full bg-muted accent-[hsl(var(--primary))]'
       />
     </label>
   )
@@ -997,13 +1033,9 @@ function ThreadComment(props: {
           {new Date(props.comment.createdAt).toLocaleDateString()}
         </p>
         <p>{props.comment.body}</p>
-        <button
-          type='button'
-          className='ghost-button'
-          onClick={() => props.onReply(props.comment)}
-        >
+        <Button type='button' variant='ghost' size='sm' onClick={() => props.onReply(props.comment)}>
           Reply
-        </button>
+        </Button>
       </div>
       {props.comment.replies.length > 0 ? (
         <div className='comment-children'>

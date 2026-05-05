@@ -1,5 +1,6 @@
 import { useState, useEffect } from 'react'
 import { api } from './api'
+import { Button, Input } from '@/components/common'
 import type { CountryDto, CreateCountryCommand } from './types'
 
 interface CountriesManagerProps {
@@ -12,22 +13,27 @@ export function CountriesManager({ onError, onStatus }: CountriesManagerProps) {
   const [loading, setLoading] = useState(false)
   const [formData, setFormData] = useState({ code: '', name: '' })
   const [expandedCountryId, setExpandedCountryId] = useState<number | null>(null)
+  const selectlessInputClassName = 'space-y-1'
 
   useEffect(() => {
-    loadCountries()
-  }, [])
+    let cancelled = false
 
-  async function loadCountries() {
-    setLoading(true)
-    try {
-      const data = await api.getAllCountries()
-      setCountries(data)
-    } catch (error) {
-      onError(error)
-    } finally {
-      setLoading(false)
+    void (async () => {
+      setLoading(true)
+      try {
+        const data = await api.getAllCountries()
+        if (!cancelled) setCountries(data)
+      } catch (error) {
+        if (!cancelled) onError(error)
+      } finally {
+        if (!cancelled) setLoading(false)
+      }
+    })()
+
+    return () => {
+      cancelled = true
     }
-  }
+  }, [onError])
 
   async function handleCreateCountry(e: React.FormEvent) {
     e.preventDefault()
@@ -65,23 +71,23 @@ export function CountriesManager({ onError, onStatus }: CountriesManagerProps) {
       <h3>Countries</h3>
 
       <form onSubmit={handleCreateCountry} className='admin-form'>
-        <label>
-          <span>Code</span>
-          <input
+        <label className={selectlessInputClassName}>
+          <span className='text-xs font-medium text-muted-foreground'>Code</span>
+          <Input
             value={formData.code}
             onChange={(e) => setFormData({ ...formData, code: e.target.value })}
             placeholder='US, UK, CA'
           />
         </label>
-        <label>
-          <span>Name</span>
-          <input
+        <label className={selectlessInputClassName}>
+          <span className='text-xs font-medium text-muted-foreground'>Name</span>
+          <Input
             value={formData.name}
             onChange={(e) => setFormData({ ...formData, name: e.target.value })}
             placeholder='United States'
           />
         </label>
-        <button type='submit'>Add Country</button>
+        <Button type='submit'>Add Country</Button>
       </form>
 
       <div className='items-list'>
@@ -98,9 +104,10 @@ export function CountriesManager({ onError, onStatus }: CountriesManagerProps) {
                   <small>{country.code}</small>
                 </div>
                 <div className='item-actions'>
-                  <button
+                  <Button
                     type='button'
-                    className='ghost-button'
+                    variant='ghost'
+                    size='sm'
                     onClick={() =>
                       setExpandedCountryId(
                         expandedCountryId === country.id ? null : country.id,
@@ -108,14 +115,15 @@ export function CountriesManager({ onError, onStatus }: CountriesManagerProps) {
                     }
                   >
                     {expandedCountryId === country.id ? 'Hide' : 'View states'}
-                  </button>
-                  <button
+                  </Button>
+                  <Button
                     type='button'
-                    className='ghost-button danger'
+                    variant='ghost'
+                    size='sm'
                     onClick={() => handleDeleteCountry(country.id)}
                   >
                     Delete
-                  </button>
+                  </Button>
                 </div>
               </div>
               {expandedCountryId === country.id && (

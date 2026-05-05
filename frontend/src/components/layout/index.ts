@@ -1,1 +1,1 @@
-// Re-export components from components/layout
+export { ThemeControl } from './ThemeControl'

@@ -1,5 +1,6 @@
 import { useState, useEffect } from 'react'
 import { api } from './api'
+import { Button, Input } from '@/components/common'
 import type { CountryDto, StateDto } from './types'
 
 interface StatesManagerProps {
@@ -14,27 +15,26 @@ export function StatesManager({ onError, onStatus }: StatesManagerProps) {
   const [loading, setLoading] = useState(false)
   const [formData, setFormData] = useState({ code: '', name: '' })
   const [expandedStateId, setExpandedStateId] = useState<number | null>(null)
+  const nativeSelectClassName =
+    'flex h-10 w-full rounded-md border border-input bg-background px-3 py-2 text-sm ring-offset-background focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 disabled:cursor-not-allowed disabled:opacity-50'
+  const fieldClassName = 'space-y-1'
 
   useEffect(() => {
-    loadCountries()
-  }, [])
+    let cancelled = false
 
-  useEffect(() => {
-    if (selectedCountryId !== null) {
-      loadStates(selectedCountryId)
-    } else {
-      setStates([])
-    }
-  }, [selectedCountryId])
+    void (async () => {
+      try {
+        const data = await api.getAllCountries()
+        if (!cancelled) setCountries(data)
+      } catch (error) {
+        if (!cancelled) onError(error)
+      }
+    })()
 
-  async function loadCountries() {
-    try {
-      const data = await api.getAllCountries()
-      setCountries(data)
-    } catch (error) {
-      onError(error)
+    return () => {
+      cancelled = true
     }
-  }
+  }, [onError])
 
   async function loadStates(countryId: number) {
     setLoading(true)
@@ -45,6 +45,16 @@ export function StatesManager({ onError, onStatus }: StatesManagerProps) {
       onError(error)
     } finally {
       setLoading(false)
+    }
+  }
+
+  function handleCountryChange(nextCountryId: number | null) {
+    setSelectedCountryId(nextCountryId)
+    setExpandedStateId(null)
+    setStates([])
+
+    if (nextCountryId != null) {
+      void loadStates(nextCountryId)
     }
   }
 
@@ -92,10 +102,11 @@ export function StatesManager({ onError, onStatus }: StatesManagerProps) {
       <h3>States</h3>
 
       <label>
-        <span>Select Country</span>
+        <span className='text-xs font-medium text-muted-foreground'>Select Country</span>
         <select
           value={selectedCountryId ?? ''}
-          onChange={(e) => setSelectedCountryId(e.target.value ? Number(e.target.value) : null)}
+          onChange={(e) => handleCountryChange(e.target.value ? Number(e.target.value) : null)}
+          className={nativeSelectClassName}
         >
           <option value=''>Choose a country</option>
           {countries.map((country) => (
@@ -109,23 +120,23 @@ export function StatesManager({ onError, onStatus }: StatesManagerProps) {
       {selectedCountryId !== null && (
         <>
           <form onSubmit={handleCreateState} className='admin-form'>
-            <label>
-              <span>Code</span>
-              <input
+            <label className={fieldClassName}>
+              <span className='text-xs font-medium text-muted-foreground'>Code</span>
+              <Input
                 value={formData.code}
                 onChange={(e) => setFormData({ ...formData, code: e.target.value })}
                 placeholder='CA, TX, NY'
               />
             </label>
-            <label>
-              <span>Name</span>
-              <input
+            <label className={fieldClassName}>
+              <span className='text-xs font-medium text-muted-foreground'>Name</span>
+              <Input
                 value={formData.name}
                 onChange={(e) => setFormData({ ...formData, name: e.target.value })}
                 placeholder='California'
               />
             </label>
-            <button type='submit'>Add State</button>
+            <Button type='submit'>Add State</Button>
           </form>
 
           <div className='items-list'>
@@ -142,22 +153,24 @@ export function StatesManager({ onError, onStatus }: StatesManagerProps) {
                       <small>{state.code}</small>
                     </div>
                     <div className='item-actions'>
-                      <button
+                      <Button
                         type='button'
-                        className='ghost-button'
+                        variant='ghost'
+                        size='sm'
                         onClick={() =>
                           setExpandedStateId(expandedStateId === state.id ? null : state.id)
                         }
                       >
                         {expandedStateId === state.id ? 'Hide' : 'Details'}
-                      </button>
-                      <button
+                      </Button>
+                      <Button
                         type='button'
-                        className='ghost-button danger'
+                        variant='ghost'
+                        size='sm'
                         onClick={() => handleDeleteState(state.id)}
                       >
                         Delete
-                      </button>
+                      </Button>
                     </div>
                   </div>
                   {expandedStateId === state.id && (
