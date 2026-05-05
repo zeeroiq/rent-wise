@@ -8,3 +8,6 @@ deploy/*.env
 
 .idea
 .vscode
+
+data
+*.db
