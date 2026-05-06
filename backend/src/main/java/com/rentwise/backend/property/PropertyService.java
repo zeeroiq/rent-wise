@@ -19,6 +19,7 @@ import org.springframework.transaction.annotation.Transactional;
 import java.time.LocalDateTime;
 import java.util.List;
 import java.util.NoSuchElementException;
+import java.util.Objects;
 import java.util.stream.Collectors;
 
 @Service
@@ -39,8 +40,7 @@ public class PropertyService {
      * Create a new property from tenant submission
      */
     public PropertyDetailDto createProperty(PropertyOnboardingCommand command, AppUser creator) {
-        Landlord landlord = landlordRepository.findById(command.landlordId())
-                .orElseThrow(() -> new NoSuchElementException("Landlord not found: " + command.landlordId()));
+        Landlord landlord = resolveLandlord(command);
 
         Property property = new Property(
                 command.title(),
@@ -188,6 +188,34 @@ public class PropertyService {
 
         Property saved = propertyRepository.save(property);
         return toDetailDto(saved);
+    }
+
+    private Landlord resolveLandlord(PropertyOnboardingCommand command) {
+        if (hasText(command.landlordName())) {
+            return landlordRepository.save(new Landlord(
+                    command.landlordName().trim(),
+                    trimToNull(command.landlordEmail()),
+                    trimToNull(command.landlordPhoneNumber()),
+                    trimToNull(command.landlordManagementStyle())
+            ));
+        }
+        if (command.landlordId() != null) {
+            return landlordRepository.findById(command.landlordId())
+                    .orElseThrow(() -> new NoSuchElementException("Landlord not found: " + command.landlordId()));
+        }
+        throw new IllegalArgumentException("Landlord details are required");
+    }
+
+    private boolean hasText(String value) {
+        return value != null && !value.trim().isEmpty();
+    }
+
+    private String trimToNull(String value) {
+        if (value == null) {
+            return null;
+        }
+        String trimmed = value.trim();
+        return Objects.equals(trimmed, "") ? null : trimmed;
     }
 
     /**

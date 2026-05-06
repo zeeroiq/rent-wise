@@ -42,12 +42,14 @@ public interface PropertyRepository extends JpaRepository<Property, Long> {
             where (:state is null or lower(p.state) = lower(:state))
               and (:city is null or lower(p.city) = lower(:city))
               and (:locality is null or lower(p.locality) = lower(:locality))
+              and p.status = :status
             order by p.state, p.city, p.locality, p.title
             """)
     List<Property> search(
             @Param("state") String state,
             @Param("city") String city,
-            @Param("locality") String locality
+            @Param("locality") String locality,
+            @Param("status") PropertyStatus status
     );
 
     @Query("""

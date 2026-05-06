@@ -3,6 +3,7 @@ package com.rentwise.backend.web;
 import com.rentwise.backend.auth.RentwisePrincipal;
 import com.rentwise.backend.landlord.Landlord;
 import com.rentwise.backend.property.Property;
+import com.rentwise.backend.property.PropertyStatus;
 import com.rentwise.backend.property.PropertyRepository;
 import com.rentwise.backend.review.Review;
 import com.rentwise.backend.review.ReviewComment;
@@ -64,7 +65,12 @@ public class AppService {
 
     @Transactional(readOnly = true)
     public List<PropertyCardDto> search(String state, String city, String locality) {
-        return propertyRepository.search(normalize(state), normalize(city), normalize(locality)).stream()
+        return propertyRepository.search(
+                        normalize(state),
+                        normalize(city),
+                        normalize(locality),
+                        PropertyStatus.ACTIVE
+                ).stream()
                 .map(property -> {
                     List<Review> reviews = reviewRepository.findByPropertyIdOrderByCreatedAtDesc(property.getId());
                     Map<Long, List<ReviewVote>> votesByReviewId = new HashMap<>();

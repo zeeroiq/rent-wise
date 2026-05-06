@@ -16,6 +16,10 @@ import { ThemeMenu } from '@/components/layout'
 import type {
   AuthChannel,
   AuthSession,
+  CreatePropertyPayload,
+  FurnishingType,
+  OccupancyType,
+  PropertyCondition,
   OtpChallenge,
   PropertyCard,
   PropertyDetail,
@@ -48,6 +52,24 @@ type ReplyState = {
   parentLabel: string | null
 }
 
+const initialPropertyDraft: CreatePropertyPayload = {
+  title: '',
+  propertyType: '',
+  addressLine1: '',
+  locality: '',
+  city: '',
+  state: '',
+  postalCode: '',
+  highlights: '',
+  landlordName: '',
+  landlordEmail: '',
+  landlordPhoneNumber: '',
+  landlordManagementStyle: '',
+  onboardingDate: '',
+  exitDate: '',
+  amenities: '',
+}
+
 function App() {
   const [session, setSession] = useState<AuthSession | null>(null)
   const [sessionLoaded, setSessionLoaded] = useState(false)
@@ -74,6 +96,10 @@ function App() {
   const [loadingSearch, setLoadingSearch] = useState(false)
   const [loadingDetail, setLoadingDetail] = useState(false)
   const [showAdminPanel, setShowAdminPanel] = useState(false)
+  const [propertyDialogOpen, setPropertyDialogOpen] = useState(false)
+  const [submittingProperty, setSubmittingProperty] = useState(false)
+  const [propertyDraft, setPropertyDraft] =
+    useState<CreatePropertyPayload>(initialPropertyDraft)
 
   const oauthProviders = session?.oauthProviders ?? []
   const selectedProperty = useMemo(
@@ -367,6 +393,47 @@ function App() {
     setReviewDraft((current) => ({ ...current, [key]: value }))
   }
 
+  function updatePropertyDraft<K extends keyof CreatePropertyPayload>(
+    key: K,
+    value: CreatePropertyPayload[K],
+  ) {
+    setPropertyDraft((current) => ({ ...current, [key]: value }))
+  }
+
+  async function handleCreateProperty(event: FormEvent<HTMLFormElement>) {
+    event.preventDefault()
+    if (!session?.user) {
+      setLoginOpen(true)
+      return
+    }
+    setSubmittingProperty(true)
+    setError(null)
+    setStatus(null)
+    try {
+      const payload: CreatePropertyPayload = {
+        ...propertyDraft,
+        postalCode: propertyDraft.postalCode?.trim() || undefined,
+        highlights: propertyDraft.highlights?.trim() || undefined,
+        landlordEmail: propertyDraft.landlordEmail?.trim() || undefined,
+        landlordPhoneNumber: propertyDraft.landlordPhoneNumber?.trim() || undefined,
+        landlordManagementStyle: propertyDraft.landlordManagementStyle?.trim() || undefined,
+        exitDate: propertyDraft.exitDate?.trim() || undefined,
+        amenities: propertyDraft.amenities?.trim() || undefined,
+      }
+      await api.createProperty(payload)
+      setPropertyDraft(initialPropertyDraft)
+      setPropertyDialogOpen(false)
+      setStatus('Property submitted for verification')
+      await handleSearch()
+      const statesData = await api.fetchStates()
+      setStates(statesData)
+    } catch (caughtError) {
+      reportError(caughtError)
+    } finally {
+      setSubmittingProperty(false)
+    }
+  }
+
   const nativeSelectClassName =
     'flex h-10 w-full appearance-none rounded-md border border-input bg-background px-3 py-2 text-sm text-foreground ring-offset-background focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 disabled:cursor-not-allowed disabled:opacity-50'
 
@@ -537,6 +604,138 @@ function App() {
         </DialogContent>
       </Dialog>
 
+      <Dialog open={propertyDialogOpen} onOpenChange={setPropertyDialogOpen}>
+        <DialogContent className='max-h-[90vh] overflow-y-auto sm:max-w-2xl'>
+          <DialogHeader>
+            <DialogTitle>Add property</DialogTitle>
+            <DialogDescription>
+              Submit missing property details. Listings are reviewed before going live.
+            </DialogDescription>
+          </DialogHeader>
+
+          <form className='space-y-3' onSubmit={handleCreateProperty}>
+            <div className='grid gap-3 sm:grid-cols-2'>
+              <label className='space-y-1'>
+                <span className='text-xs font-medium text-muted-foreground'>Title*</span>
+                <Input value={propertyDraft.title} onChange={(event) => updatePropertyDraft('title', event.target.value)} required />
+              </label>
+              <label className='space-y-1'>
+                <span className='text-xs font-medium text-muted-foreground'>Property type*</span>
+                <Input value={propertyDraft.propertyType} onChange={(event) => updatePropertyDraft('propertyType', event.target.value)} required />
+              </label>
+              <label className='space-y-1 sm:col-span-2'>
+                <span className='text-xs font-medium text-muted-foreground'>Address line 1*</span>
+                <Input value={propertyDraft.addressLine1} onChange={(event) => updatePropertyDraft('addressLine1', event.target.value)} required />
+              </label>
+              <label className='space-y-1'>
+                <span className='text-xs font-medium text-muted-foreground'>Locality*</span>
+                <Input value={propertyDraft.locality} onChange={(event) => updatePropertyDraft('locality', event.target.value)} required />
+              </label>
+              <label className='space-y-1'>
+                <span className='text-xs font-medium text-muted-foreground'>City*</span>
+                <Input value={propertyDraft.city} onChange={(event) => updatePropertyDraft('city', event.target.value)} required />
+              </label>
+              <label className='space-y-1'>
+                <span className='text-xs font-medium text-muted-foreground'>State*</span>
+                <Input value={propertyDraft.state} onChange={(event) => updatePropertyDraft('state', event.target.value)} required />
+              </label>
+              <label className='space-y-1'>
+                <span className='text-xs font-medium text-muted-foreground'>Postal code</span>
+                <Input value={propertyDraft.postalCode ?? ''} onChange={(event) => updatePropertyDraft('postalCode', event.target.value)} />
+              </label>
+              <label className='space-y-1'>
+                <span className='text-xs font-medium text-muted-foreground'>Onboarding date*</span>
+                <Input type='date' value={propertyDraft.onboardingDate} onChange={(event) => updatePropertyDraft('onboardingDate', event.target.value)} required />
+              </label>
+              <label className='space-y-1'>
+                <span className='text-xs font-medium text-muted-foreground'>Exit date</span>
+                <Input type='date' value={propertyDraft.exitDate ?? ''} onChange={(event) => updatePropertyDraft('exitDate', event.target.value)} />
+              </label>
+              <label className='space-y-1'>
+                <span className='text-xs font-medium text-muted-foreground'>Monthly rent</span>
+                <Input type='number' value={propertyDraft.monthlyRent ?? ''} onChange={(event) => updatePropertyDraft('monthlyRent', event.target.value ? Number(event.target.value) : undefined)} />
+              </label>
+              <label className='space-y-1'>
+                <span className='text-xs font-medium text-muted-foreground'>Deposit amount</span>
+                <Input type='number' value={propertyDraft.depositAmount ?? ''} onChange={(event) => updatePropertyDraft('depositAmount', event.target.value ? Number(event.target.value) : undefined)} />
+              </label>
+              <label className='space-y-1 sm:col-span-2'>
+                <span className='text-xs font-medium text-muted-foreground'>Highlights</span>
+                <Textarea value={propertyDraft.highlights ?? ''} onChange={(event) => updatePropertyDraft('highlights', event.target.value)} />
+              </label>
+              <label className='space-y-1 sm:col-span-2'>
+                <span className='text-xs font-medium text-muted-foreground'>Amenities</span>
+                <Textarea value={propertyDraft.amenities ?? ''} onChange={(event) => updatePropertyDraft('amenities', event.target.value)} placeholder='Comma-separated values' />
+              </label>
+              <label className='space-y-1'>
+                <span className='text-xs font-medium text-muted-foreground'>Entry condition</span>
+                <select className={nativeSelectClassName} value={propertyDraft.propertyConditionOnEntry ?? ''} onChange={(event) => updatePropertyDraft('propertyConditionOnEntry', (event.target.value || undefined) as PropertyCondition | undefined)}>
+                  <option value=''>Select</option>
+                  <option value='EXCELLENT'>Excellent</option>
+                  <option value='GOOD'>Good</option>
+                  <option value='FAIR'>Fair</option>
+                  <option value='POOR'>Poor</option>
+                </select>
+              </label>
+              <label className='space-y-1'>
+                <span className='text-xs font-medium text-muted-foreground'>Exit condition</span>
+                <select className={nativeSelectClassName} value={propertyDraft.propertyConditionOnExit ?? ''} onChange={(event) => updatePropertyDraft('propertyConditionOnExit', (event.target.value || undefined) as PropertyCondition | undefined)}>
+                  <option value=''>Select</option>
+                  <option value='EXCELLENT'>Excellent</option>
+                  <option value='GOOD'>Good</option>
+                  <option value='FAIR'>Fair</option>
+                  <option value='POOR'>Poor</option>
+                </select>
+              </label>
+              <label className='space-y-1'>
+                <span className='text-xs font-medium text-muted-foreground'>Furnishing</span>
+                <select className={nativeSelectClassName} value={propertyDraft.furnishingType ?? ''} onChange={(event) => updatePropertyDraft('furnishingType', (event.target.value || undefined) as FurnishingType | undefined)}>
+                  <option value=''>Select</option>
+                  <option value='UNFURNISHED'>Unfurnished</option>
+                  <option value='SEMI_FURNISHED'>Semi furnished</option>
+                  <option value='FULLY_FURNISHED'>Fully furnished</option>
+                </select>
+              </label>
+              <label className='space-y-1'>
+                <span className='text-xs font-medium text-muted-foreground'>Occupancy</span>
+                <select className={nativeSelectClassName} value={propertyDraft.occupancyType ?? ''} onChange={(event) => updatePropertyDraft('occupancyType', (event.target.value || undefined) as OccupancyType | undefined)}>
+                  <option value=''>Select</option>
+                  <option value='SOLO'>Solo</option>
+                  <option value='SHARED'>Shared</option>
+                  <option value='FAMILY'>Family</option>
+                </select>
+              </label>
+            </div>
+
+            <div className='mt-2 rounded-lg border border-input p-3'>
+              <p className='mb-2 text-xs font-medium text-muted-foreground'>Landlord details</p>
+              <div className='grid gap-3 sm:grid-cols-2'>
+                <label className='space-y-1 sm:col-span-2'>
+                  <span className='text-xs font-medium text-muted-foreground'>Name*</span>
+                  <Input value={propertyDraft.landlordName} onChange={(event) => updatePropertyDraft('landlordName', event.target.value)} required />
+                </label>
+                <label className='space-y-1'>
+                  <span className='text-xs font-medium text-muted-foreground'>Email</span>
+                  <Input value={propertyDraft.landlordEmail ?? ''} onChange={(event) => updatePropertyDraft('landlordEmail', event.target.value)} />
+                </label>
+                <label className='space-y-1'>
+                  <span className='text-xs font-medium text-muted-foreground'>Phone</span>
+                  <Input value={propertyDraft.landlordPhoneNumber ?? ''} onChange={(event) => updatePropertyDraft('landlordPhoneNumber', event.target.value)} />
+                </label>
+                <label className='space-y-1 sm:col-span-2'>
+                  <span className='text-xs font-medium text-muted-foreground'>Management style</span>
+                  <Textarea value={propertyDraft.landlordManagementStyle ?? ''} onChange={(event) => updatePropertyDraft('landlordManagementStyle', event.target.value)} />
+                </label>
+              </div>
+            </div>
+
+            <Button type='submit' disabled={submittingProperty}>
+              {submittingProperty ? 'Submitting...' : 'Submit property'}
+            </Button>
+          </form>
+        </DialogContent>
+      </Dialog>
+
       {showAdminPanel ? (
         <main className='min-h-0 flex-1'>
           <AdminPanel onError={reportError} onStatus={(msg) => setStatus(msg)} />
@@ -603,6 +802,19 @@ function App() {
             <Button type='button' onClick={handleSearch} disabled={loadingSearch}>
               {loadingSearch ? 'Searching...' : 'Search properties'}
             </Button>
+            <Button
+              type='button'
+              variant='outline'
+              onClick={() => {
+                if (session?.user) {
+                  setPropertyDialogOpen(true)
+                } else {
+                  setLoginOpen(true)
+                }
+              }}
+            >
+              Can't find property? Add it
+            </Button>
           </section>
 
           <section className='results-band'>
@@ -636,7 +848,24 @@ function App() {
               ))}
 
               {properties.length === 0 ? (
-                <div className='empty-state'>No properties matched the selected area.</div>
+                <div className='empty-state'>
+                  No properties matched the selected area.
+                  <div className='mt-3'>
+                    <Button
+                      type='button'
+                      variant='outline'
+                      onClick={() => {
+                        if (session?.user) {
+                          setPropertyDialogOpen(true)
+                        } else {
+                          setLoginOpen(true)
+                        }
+                      }}
+                    >
+                      Add this property
+                    </Button>
+                  </div>
+                </div>
               ) : null}
             </div>
           </section>

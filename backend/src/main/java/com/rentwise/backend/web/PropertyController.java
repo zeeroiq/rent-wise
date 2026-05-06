@@ -4,6 +4,7 @@ import com.rentwise.backend.auth.RentwisePrincipal;
 import com.rentwise.backend.property.*;
 import com.rentwise.backend.user.AppUser;
 import com.rentwise.backend.user.AppUserRepository;
+import jakarta.validation.Valid;
 import org.springframework.data.domain.Page;
 import org.springframework.data.domain.Pageable;
 import org.springframework.http.HttpStatus;
@@ -34,7 +35,7 @@ public class PropertyController {
     @PostMapping
     @PreAuthorize("isAuthenticated()")
     public ResponseEntity<PropertyDetailDto> createProperty(
-            @RequestBody PropertyOnboardingCommand command,
+            @Valid @RequestBody PropertyOnboardingCommand command,
             Authentication auth
     ) {
         RentwisePrincipal principal = (RentwisePrincipal) auth.getPrincipal();
@@ -134,7 +135,7 @@ public class PropertyController {
     @PreAuthorize("isAuthenticated()")
     public ResponseEntity<PropertyDetailDto> updateProperty(
             @PathVariable Long id,
-            @RequestBody PropertyOnboardingCommand command
+            @Valid @RequestBody PropertyOnboardingCommand command
     ) {
         PropertyDetailDto updated = propertyService.updateProperty(id, command);
         return ResponseEntity.ok(updated);

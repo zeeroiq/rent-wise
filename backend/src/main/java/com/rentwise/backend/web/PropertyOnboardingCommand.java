@@ -1,19 +1,25 @@
 package com.rentwise.backend.web;
 
+import jakarta.validation.constraints.NotBlank;
+import jakarta.validation.constraints.NotNull;
 import java.math.BigDecimal;
 import java.time.LocalDate;
 
 public record PropertyOnboardingCommand(
-        String title,
-        String propertyType,
-        String addressLine1,
-        String locality,
-        String city,
-        String state,
+        @NotBlank String title,
+        @NotBlank String propertyType,
+        @NotBlank String addressLine1,
+        @NotBlank String locality,
+        @NotBlank String city,
+        @NotBlank String state,
         String postalCode,
         String highlights,
         Long landlordId,
-        LocalDate onboardingDate,
+        String landlordName,
+        String landlordEmail,
+        String landlordPhoneNumber,
+        String landlordManagementStyle,
+        @NotNull LocalDate onboardingDate,
         LocalDate exitDate,
         BigDecimal monthlyRent,
         BigDecimal depositAmount,
