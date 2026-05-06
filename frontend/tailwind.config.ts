@@ -28,7 +28,12 @@ const config: Config = {
           foreground: 'hsl(var(--destructive-foreground))',
         },
         muted: {
-          DEFAULT: 'hsl(var(--muted))',
+          // Use a surface-strong background for the `bg-muted` utility so
+          // muted backgrounds are subtle surface tones rather than the
+          // same value used for muted text. Keep `muted-foreground`
+          // mapping so `text-muted-foreground` continues to map to the
+          // readable text color variable.
+          DEFAULT: 'hsl(var(--surface-strong))',
           foreground: 'hsl(var(--muted-foreground))',
         },
         accent: {
