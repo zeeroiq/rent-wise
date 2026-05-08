@@ -28,6 +28,9 @@ public class ConfigurableOtpDeliveryService implements OtpDeliveryService {
     private final String smsAuthToken;
     private final String smsFromNumber;
     private final String otpFromEmail;
+    private final String telegramBotToken;
+    private final String signalAccount;
+    private final String signalCliPath;
 
     public ConfigurableOtpDeliveryService(
             ObjectProvider<JavaMailSender> mailSenderProvider,
@@ -35,7 +38,10 @@ public class ConfigurableOtpDeliveryService implements OtpDeliveryService {
             @Value("${app.sms.account-sid:}") String smsAccountSid,
             @Value("${app.sms.auth-token:}") String smsAuthToken,
             @Value("${app.sms.from-number:}") String smsFromNumber,
-            @Value("${app.mail.from:}") String otpFromEmail
+            @Value("${app.mail.from:rentwise@zeeroiq.com}") String otpFromEmail,
+            @Value("${app.telegram.bot-token:}") String telegramBotToken,
+            @Value("${app.signal.account:}") String signalAccount,
+            @Value("${app.signal.cli-path:signal-cli}") String signalCliPath
     ) {
         this.mailSenderProvider = mailSenderProvider;
         this.environment = environment;
@@ -43,6 +49,9 @@ public class ConfigurableOtpDeliveryService implements OtpDeliveryService {
         this.smsAuthToken = smsAuthToken;
         this.smsFromNumber = smsFromNumber;
         this.otpFromEmail = otpFromEmail;
+        this.telegramBotToken = telegramBotToken;
+        this.signalAccount = signalAccount;
+        this.signalCliPath = signalCliPath;
         this.httpClient = HttpClient.newHttpClient();
     }
 
@@ -51,6 +60,11 @@ public class ConfigurableOtpDeliveryService implements OtpDeliveryService {
         switch (channel) {
             case EMAIL -> deliverEmail(destination, code);
             case MOBILE -> deliverSms(destination, code);
+            case TELEGRAM -> deliverTelegram(destination, code);
+            case SIGNAL -> deliverSignal(destination, code);
+            case TOTP -> {
+                // TOTP is verified locally and is not delivered.
+            }
         }
     }
 
@@ -115,6 +129,72 @@ public class ConfigurableOtpDeliveryService implements OtpDeliveryService {
             throw new IllegalStateException("SMS delivery interrupted", exception);
         } catch (Exception exception) {
             throw new IllegalStateException("SMS delivery failed", exception);
+        }
+    }
+
+    private void deliverTelegram(String destination, String code) {
+        if (!hasText(telegramBotToken)) {
+            if (isDevOtpVisible()) {
+                log.info("Telegram bot not configured, skipping OTP delivery to {}", destination);
+                return;
+            }
+            throw new IllegalStateException("Telegram OTP delivery requires a bot token");
+        }
+
+        String message = "RentWise verification code: %s. Expires in 10 minutes.".formatted(code);
+        String uri = "https://api.telegram.org/bot%s/sendMessage?chat_id=%s&text=%s"
+                .formatted(
+                        telegramBotToken,
+                        encode(destination),
+                        encode(message)
+                );
+        HttpRequest request = HttpRequest.newBuilder()
+                .uri(URI.create(uri))
+                .GET()
+                .build();
+        try {
+            HttpResponse<String> response = httpClient.send(request, HttpResponse.BodyHandlers.ofString());
+            if (response.statusCode() >= 300) {
+                throw new IllegalStateException("Telegram API returned HTTP " + response.statusCode());
+            }
+        } catch (InterruptedException exception) {
+            Thread.currentThread().interrupt();
+            throw new IllegalStateException("Telegram delivery interrupted", exception);
+        } catch (Exception exception) {
+            throw new IllegalStateException("Telegram delivery failed", exception);
+        }
+    }
+
+    private void deliverSignal(String destination, String code) {
+        if (!hasText(signalAccount)) {
+            if (isDevOtpVisible()) {
+                log.info("Signal account not configured, skipping OTP delivery to {}", destination);
+                return;
+            }
+            throw new IllegalStateException("Signal OTP delivery requires a configured account");
+        }
+        ProcessBuilder processBuilder = new ProcessBuilder(
+                signalCliPath,
+                "-a",
+                signalAccount,
+                "send",
+                "-m",
+                "RentWise verification code: %s. Expires in 10 minutes.".formatted(code),
+                destination
+        );
+        processBuilder.redirectErrorStream(true);
+        try {
+            Process process = processBuilder.start();
+            String output = new String(process.getInputStream().readAllBytes(), StandardCharsets.UTF_8);
+            int exitCode = process.waitFor();
+            if (exitCode != 0) {
+                throw new IllegalStateException("Signal CLI returned exit code %d: %s".formatted(exitCode, output.trim()));
+            }
+        } catch (InterruptedException exception) {
+            Thread.currentThread().interrupt();
+            throw new IllegalStateException("Signal delivery interrupted", exception);
+        } catch (Exception exception) {
+            throw new IllegalStateException("Signal delivery failed", exception);
         }
     }
 

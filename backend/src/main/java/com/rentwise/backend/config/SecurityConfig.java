@@ -36,6 +36,8 @@ public class SecurityConfig {
                         .requestMatchers(HttpMethod.GET, "/", "/index.html", "/favicon.svg", "/assets/**").permitAll()
                         .requestMatchers(HttpMethod.GET, "/api/**").permitAll()
                         .requestMatchers("/api/auth/otp/**").permitAll()
+                        .requestMatchers("/api/auth/totp/login").permitAll()
+                        .requestMatchers("/api/auth/totp/enrollment/**").authenticated()
                         .requestMatchers("/oauth2/**", "/login/oauth2/**").permitAll()
                         .requestMatchers(HttpMethod.GET, "/api/admin/locations/**").permitAll()
                         .requestMatchers(HttpMethod.POST, "/api/admin/locations/**").authenticated()

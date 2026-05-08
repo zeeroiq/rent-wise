@@ -35,11 +35,20 @@ server:
 app:
   frontend-base-url: ${FRONTEND_BASE_URL:http://localhost:5173}
   mail:
-    from: ${APP_MAIL_FROM:${SPRING_MAIL_USERNAME:}}
+    from: ${APP_MAIL_FROM:rentwise@zeeroiq.com}
   sms:
     account-sid: ${TWILIO_ACCOUNT_SID:}
     auth-token: ${TWILIO_AUTH_TOKEN:}
     from-number: ${TWILIO_FROM_NUMBER:}
+  telegram:
+    bot-token: ${TELEGRAM_BOT_TOKEN:}
+  signal:
+    account: ${SIGNAL_ACCOUNT:}
+    cli-path: ${SIGNAL_CLI_PATH:signal-cli}
+  totp:
+    issuer: ${APP_TOTP_ISSUER:RentWise}
+    period-seconds: ${APP_TOTP_PERIOD_SECONDS:30}
+    digits: ${APP_TOTP_DIGITS:6}
   otp:
     length: 6
     ttl-minutes: 10

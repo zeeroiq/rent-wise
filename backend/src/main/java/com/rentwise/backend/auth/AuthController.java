@@ -32,6 +32,33 @@ public class AuthController {
         return authService.verifyOtp(command, request);
     }
 
+    @PostMapping("/totp/login")
+    public AuthSessionResponse verifyTotpLogin(
+            @Valid @RequestBody TotpLoginCommand command,
+            HttpServletRequest request
+    ) {
+        return authService.verifyTotpLogin(command, request);
+    }
+
+    @PostMapping("/totp/enrollment")
+    public TotpEnrollmentResponse createTotpEnrollment(Authentication authentication) {
+        return authService.createTotpEnrollment(authentication);
+    }
+
+    @PostMapping("/totp/enrollment/activate")
+    public AuthSessionResponse activateTotp(
+            @Valid @RequestBody TotpActivateCommand command,
+            Authentication authentication
+    ) {
+        return authService.activateTotp(command, authentication);
+    }
+
+    @PostMapping("/totp/enrollment/disable")
+    public ResponseEntity<Void> disableTotp(Authentication authentication) {
+        authService.disableTotp(authentication);
+        return ResponseEntity.noContent().build();
+    }
+
     @GetMapping("/session")
     public AuthSessionResponse session(Authentication authentication) {
         return authService.currentSession(authentication);

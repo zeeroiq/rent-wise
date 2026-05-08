@@ -1,4 +1,4 @@
-export type AuthChannel = 'EMAIL' | 'MOBILE'
+export type AuthChannel = 'EMAIL' | 'MOBILE' | 'TELEGRAM' | 'SIGNAL' | 'TOTP'
 export type ReviewVoteType = 'HELPFUL' | 'NOT_HELPFUL' | 'SAME_ISSUE'
 export type PropertyStatus = 'PENDING_VERIFICATION' | 'ACTIVE' | 'ARCHIVED'
 export type PropertyCondition = 'EXCELLENT' | 'GOOD' | 'FAIR' | 'POOR'
@@ -12,6 +12,7 @@ export interface SessionUser {
   mobileNumber: string | null
   avatarUrl: string | null
   isAdmin?: boolean
+  totpEnabled?: boolean
 }
 
 export interface AuthSession {
@@ -120,6 +121,14 @@ export interface OtpChallenge {
   destination: string
   expiresAt: string
   devCode: string | null
+}
+
+export interface TotpEnrollment {
+  issuer: string
+  accountName: string
+  secret: string
+  otpauthUri: string
+  enabled: boolean
 }
 
 export interface ReviewDraft {

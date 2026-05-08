@@ -14,6 +14,7 @@ import type {
   ReviewComment,
   ReviewDraft,
   ReviewVoteType,
+  TotpEnrollment,
   StateDto,
   VoteSummary,
 } from './types'
@@ -82,6 +83,30 @@ export const api = {
       method: 'POST',
       body: JSON.stringify(payload),
     })
+  },
+
+  verifyTotp(payload: { identifier: string; code: string }) {
+    return request<AuthSession>('/auth/totp/login', {
+      method: 'POST',
+      body: JSON.stringify(payload),
+    })
+  },
+
+  startTotpEnrollment() {
+    return request<TotpEnrollment>('/auth/totp/enrollment', {
+      method: 'POST',
+    })
+  },
+
+  activateTotp(payload: { code: string }) {
+    return request<AuthSession>('/auth/totp/enrollment/activate', {
+      method: 'POST',
+      body: JSON.stringify(payload),
+    })
+  },
+
+  disableTotp() {
+    return request<void>('/auth/totp/enrollment/disable', { method: 'POST' })
   },
 
   logout() {

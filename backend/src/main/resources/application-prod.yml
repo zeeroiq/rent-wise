@@ -36,10 +36,19 @@ server:
 
 app:
   mail:
-    from: ${APP_MAIL_FROM:${SPRING_MAIL_USERNAME}}
+    from: ${APP_MAIL_FROM:rentwise@zeeroiq.com}
   sms:
-    account-sid: ${TWILIO_ACCOUNT_SID}
-    auth-token: ${TWILIO_AUTH_TOKEN}
-    from-number: ${TWILIO_FROM_NUMBER}
+    account-sid: ${TWILIO_ACCOUNT_SID:-give-me-a-twilio-account-sid}
+    auth-token: ${TWILIO_AUTH_TOKEN:-give-me-a-twilio-auth-token}
+    from-number: ${TWILIO_FROM_NUMBER:+1234567890}
+  telegram:
+    bot-token: ${TELEGRAM_BOT_TOKEN:-give-me-a-telegram-bot-token}
+  signal:
+    account: ${SIGNAL_ACCOUNT:+1234567890}
+    cli-path: ${SIGNAL_CLI_PATH:signal-cli}
+  totp:
+    issuer: ${APP_TOTP_ISSUER:RentWise}
+    period-seconds: ${APP_TOTP_PERIOD_SECONDS:30}
+    digits: ${APP_TOTP_DIGITS:6}
   otp:
     expose-dev-code: false

@@ -6,6 +6,7 @@ public record SessionUserDto(
         String email,
         String mobileNumber,
         String avatarUrl,
-        boolean isAdmin
+        boolean isAdmin,
+        boolean totpEnabled
 ) {
 }

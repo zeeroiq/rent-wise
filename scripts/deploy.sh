@@ -16,6 +16,8 @@ PORT="${PORT:-8080}"
 SPRING_PROFILES_ACTIVE="${SPRING_PROFILES_ACTIVE:-prod}"
 HEALTH_URL="${HEALTH_URL:-http://127.0.0.1:${PORT}/api/catalog/states}"
 JAVA_VERSION="${JAVA_VERSION:-25}"
+SIGNAL_CLI_VERSION="${SIGNAL_CLI_VERSION:-0.14.2}"
+SIGNAL_CLI_PATH="${SIGNAL_CLI_PATH:-/usr/local/bin/signal-cli}"
 
 log() {
   printf '[deploy] %s\n' "$*"
@@ -143,6 +145,32 @@ ensure_certbot_installed() {
 
   echo "[deploy] ERROR: certbot not found and no package manager available" >&2
   exit 1
+}
+
+ensure_signal_cli_installed() {
+  if command -v signal-cli &>/dev/null; then
+    log "signal-cli is already installed"
+    return 0
+  fi
+
+  local version="${SIGNAL_CLI_VERSION}"
+  local install_dir="/opt/signal-cli"
+  local archive="/tmp/signal-cli-${version}-Linux-native.tar.gz"
+  local url="https://github.com/AsamK/signal-cli/releases/download/v${version}/signal-cli-${version}-Linux-native.tar.gz"
+
+  log "Installing signal-cli ${version} from ${url}"
+  curl -fL "${url}" -o "${archive}"
+  sudo mkdir -p /opt
+  sudo tar -xzf "${archive}" -C /opt
+  local extracted_dir
+  extracted_dir="$(find /opt -maxdepth 1 -type d -name 'signal-cli*' | sort | tail -1)"
+  if [[ -z "${extracted_dir}" ]]; then
+    echo "[deploy] ERROR: signal-cli archive did not extract a directory under /opt" >&2
+    exit 1
+  fi
+  sudo ln -sfn "${extracted_dir}" "${install_dir}"
+  sudo ln -sfn "${install_dir}/bin/signal-cli" "${SIGNAL_CLI_PATH}"
+  sudo chmod +x "${SIGNAL_CLI_PATH}"
 }
 
 configure_nginx() {
@@ -289,6 +317,9 @@ ensure_nginx_installed
 # Ensure certbot is installed
 ensure_certbot_installed
 
+# Ensure signal-cli is installed for Signal OTP delivery
+ensure_signal_cli_installed
+
 mkdir -p "${SHARED_DIR}" "${RELEASES_DIR}" "${LOG_DIR}"
 log "Deploying ${APP_NAME} into ${DEPLOY_DIR}"
 
@@ -297,6 +328,20 @@ log "Creating environment file with secrets"
 cat > "${ENV_FILE}" <<EOF
 GOOGLE_CLIENT_ID=${GOOGLE_CLIENT_ID:-}
 GOOGLE_CLIENT_SECRET=${GOOGLE_CLIENT_SECRET:-}
+SPRING_MAIL_HOST=${SPRING_MAIL_HOST:-}
+SPRING_MAIL_PORT=${SPRING_MAIL_PORT:-587}
+SPRING_MAIL_USERNAME=${SPRING_MAIL_USERNAME:-}
+SPRING_MAIL_PASSWORD=${SPRING_MAIL_PASSWORD:-}
+APP_MAIL_FROM=${APP_MAIL_FROM:-rentwise@zeeroiq.com}
+APP_TOTP_ISSUER=${APP_TOTP_ISSUER:-RentWise}
+APP_TOTP_PERIOD_SECONDS=${APP_TOTP_PERIOD_SECONDS:-30}
+APP_TOTP_DIGITS=${APP_TOTP_DIGITS:-6}
+TWILIO_ACCOUNT_SID=${TWILIO_ACCOUNT_SID:-}
+TWILIO_AUTH_TOKEN=${TWILIO_AUTH_TOKEN:-}
+TWILIO_FROM_NUMBER=${TWILIO_FROM_NUMBER:-}
+TELEGRAM_BOT_TOKEN=${TELEGRAM_BOT_TOKEN:-}
+SIGNAL_ACCOUNT=${SIGNAL_ACCOUNT:-}
+SIGNAL_CLI_PATH=${SIGNAL_CLI_PATH:-/usr/local/bin/signal-cli}
 EOF
 
 if [[ -f "${ENV_FILE}" ]]; then

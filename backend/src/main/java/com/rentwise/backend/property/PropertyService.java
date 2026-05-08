@@ -275,7 +275,8 @@ public class PropertyService {
                 property.getCreatedBy().getEmail(),
                 property.getCreatedBy().getMobileNumber(),
                 property.getCreatedBy().getAvatarUrl(),
-                property.getCreatedBy().isAdmin()
+                property.getCreatedBy().isAdmin(),
+                property.getCreatedBy().isTotpEnabled()
         );
 
         SessionUserDto verifierDto = property.getVerifiedBy() != null ?
@@ -285,7 +286,8 @@ public class PropertyService {
                         property.getVerifiedBy().getEmail(),
                         property.getVerifiedBy().getMobileNumber(),
                         property.getVerifiedBy().getAvatarUrl(),
-                        property.getVerifiedBy().isAdmin()
+                        property.getVerifiedBy().isAdmin(),
+                        property.getVerifiedBy().isTotpEnabled()
                 ) : null;
 
         // Calculate scorecard (placeholder - would need review data)

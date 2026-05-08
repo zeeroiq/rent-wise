@@ -26,6 +26,7 @@ import type {
   ReviewComment,
   ReviewDraft,
   ReviewVoteType,
+  TotpEnrollment,
 } from './types'
 
 const initialReviewDraft: ReviewDraft = {
@@ -99,6 +100,7 @@ function App() {
   const [loadingSearch, setLoadingSearch] = useState(false)
   const [loadingDetail, setLoadingDetail] = useState(false)
   const [showAdminPanel, setShowAdminPanel] = useState(false)
+  const [securityOpen, setSecurityOpen] = useState(false)
   const [propertyDialogOpen, setPropertyDialogOpen] = useState(false)
   const [submittingProperty, setSubmittingProperty] = useState(false)
   const [propertyDraft, setPropertyDraft] =
@@ -107,6 +109,8 @@ function App() {
   const [propertyStates, setPropertyStates] = useState<string[]>([])
   const [propertyCities, setPropertyCities] = useState<string[]>([])
   const [propertyLocalities, setPropertyLocalities] = useState<string[]>([])
+  const [totpEnrollment, setTotpEnrollment] = useState<TotpEnrollment | null>(null)
+  const [totpEnrollmentCode, setTotpEnrollmentCode] = useState('')
 
   const oauthProviders = session?.oauthProviders ?? []
   const selectedProperty = useMemo(
@@ -373,12 +377,86 @@ function App() {
     }
   }
 
+  async function handleTotpLogin() {
+    setError(null)
+    setStatus(null)
+    try {
+      const sessionData = await api.verifyTotp({
+        identifier: destination,
+        code: otpCode,
+      })
+      setSession(sessionData)
+      setOtpCode('')
+      setDestination('')
+      setStatus('Signed in with TOTP')
+      setLoginOpen(false)
+    } catch (caughtError) {
+      reportError(caughtError)
+    }
+  }
+
+  async function handleAuthSubmit() {
+    if (authChannel === 'TOTP') {
+      await handleTotpLogin()
+      return
+    }
+    await handleRequestOtp()
+  }
+
   async function handleLogout() {
     try {
       await api.logout()
       setSession((current) => (current ? { ...current, user: null } : current))
       setOtpChallenge(null)
+      setSecurityOpen(false)
+      setTotpEnrollment(null)
+      setTotpEnrollmentCode('')
       setStatus('Signed out')
+    } catch (caughtError) {
+      reportError(caughtError)
+    }
+  }
+
+  async function handleStartTotpEnrollment() {
+    setError(null)
+    setStatus(null)
+    try {
+      const enrollment = await api.startTotpEnrollment()
+      setTotpEnrollment(enrollment)
+      setTotpEnrollmentCode('')
+      setStatus('TOTP secret generated')
+    } catch (caughtError) {
+      reportError(caughtError)
+    }
+  }
+
+  async function handleActivateTotp() {
+    if (!totpEnrollment) return
+    try {
+      const sessionData = await api.activateTotp({ code: totpEnrollmentCode })
+      setSession(sessionData)
+      setTotpEnrollmentCode('')
+      setSecurityOpen(false)
+      setStatus('TOTP enabled')
+    } catch (caughtError) {
+      reportError(caughtError)
+    }
+  }
+
+  async function handleDisableTotp() {
+    try {
+      await api.disableTotp()
+      setSession((current) =>
+        current
+          ? {
+              ...current,
+              user: current.user ? { ...current.user, totpEnabled: false } : null,
+            }
+          : current,
+      )
+      setTotpEnrollment(null)
+      setTotpEnrollmentCode('')
+      setStatus('TOTP disabled')
     } catch (caughtError) {
       reportError(caughtError)
     }
@@ -583,6 +661,14 @@ function App() {
                   Admin
                 </Button>
               )}
+              <Button
+                type='button'
+                variant='outline'
+                size='sm'
+                onClick={() => setSecurityOpen(true)}
+              >
+                Security
+              </Button>
               <Button type='button' variant='ghost' size='sm' onClick={handleLogout}>
                 Sign out
               </Button>
@@ -625,6 +711,9 @@ function App() {
               options={[
                 { value: 'EMAIL', label: 'Email OTP' },
                 { value: 'MOBILE', label: 'Mobile OTP' },
+                { value: 'TELEGRAM', label: 'Telegram Bot' },
+                { value: 'SIGNAL', label: 'Signal Bot' },
+                { value: 'TOTP', label: 'Authenticator App' },
               ]}
               value={authChannel}
               onChange={setAuthChannel}
@@ -642,21 +731,37 @@ function App() {
 
               <label className='space-y-1'>
                 <span className='text-xs font-medium text-muted-foreground'>
-                  {authChannel === 'EMAIL' ? 'Email' : 'Mobile'}
+                  {authChannel === 'EMAIL'
+                    ? 'Email'
+                    : authChannel === 'MOBILE'
+                      ? 'Mobile'
+                      : authChannel === 'TELEGRAM'
+                        ? 'Telegram chat ID'
+                        : authChannel === 'SIGNAL'
+                          ? 'Signal number'
+                          : 'Email or mobile'}
                 </span>
                 <Input
                   value={destination}
                   onChange={(event) => setDestination(event.target.value)}
                   placeholder={
-                    authChannel === 'EMAIL' ? 'tenant@example.com' : '+1 555 000 1001'
+                    authChannel === 'EMAIL'
+                      ? 'tenant@example.com'
+                      : authChannel === 'MOBILE'
+                        ? '+1 555 000 1001'
+                        : authChannel === 'TELEGRAM'
+                          ? '123456789'
+                          : authChannel === 'SIGNAL'
+                            ? '+91 98765 43210'
+                            : 'tenant@example.com'
                   }
                 />
               </label>
             </div>
 
             <div className='grid grid-cols-2 gap-3'>
-              <Button type='button' onClick={handleRequestOtp}>
-                Request OTP
+              <Button type='button' onClick={handleAuthSubmit}>
+                {authChannel === 'TOTP' ? 'Verify TOTP' : 'Request OTP'}
               </Button>
               <Button
                 type='button'
@@ -671,7 +776,22 @@ function App() {
               </Button>
             </div>
 
-            {otpChallenge ? (
+            {authChannel === 'TOTP' ? (
+              <div className='space-y-3 rounded-lg border border-input bg-card p-4'>
+                <p className='text-xs text-muted-foreground'>
+                  Use FreeOTP, 2FAS, or another authenticator app. Enter the code currently shown
+                  in your app.
+                </p>
+                <label className='space-y-1'>
+                  <span className='text-xs font-medium text-muted-foreground'>TOTP code</span>
+                  <Input
+                    value={otpCode}
+                    onChange={(event) => setOtpCode(event.target.value)}
+                    placeholder='123456'
+                  />
+                </label>
+              </div>
+            ) : otpChallenge ? (
               <div className='space-y-3 rounded-lg border border-input bg-card p-4'>
                 <label className='space-y-1'>
                   <span className='text-xs font-medium text-muted-foreground'>Enter OTP</span>
@@ -710,6 +830,79 @@ function App() {
                 Configure OAuth credentials on the backend to enable social sign-in.
               </p>
             </div>
+          </div>
+        </DialogContent>
+      </Dialog>
+
+      <Dialog open={securityOpen} onOpenChange={setSecurityOpen}>
+        <DialogContent className='sm:max-w-2xl'>
+          <DialogHeader>
+            <DialogTitle>Security</DialogTitle>
+            <DialogDescription>
+              Manage TOTP enrollment for FreeOTP, 2FAS, or another authenticator app.
+            </DialogDescription>
+          </DialogHeader>
+
+          <div className='space-y-4'>
+            <div className='rounded-lg border border-input bg-card p-4'>
+              <p className='text-sm font-medium'>TOTP status</p>
+              <p className='text-xs text-muted-foreground'>
+                {session?.user?.totpEnabled ? 'Enabled' : 'Not enabled'}
+              </p>
+              <div className='mt-3 flex flex-wrap gap-2'>
+                {!session?.user?.totpEnabled ? (
+                  <Button type='button' onClick={handleStartTotpEnrollment}>
+                    Generate TOTP secret
+                  </Button>
+                ) : (
+                  <Button type='button' variant='outline' onClick={handleDisableTotp}>
+                    Disable TOTP
+                  </Button>
+                )}
+              </div>
+            </div>
+
+            {totpEnrollment ? (
+              <div className='space-y-3 rounded-lg border border-input bg-card p-4'>
+                <div className='space-y-1'>
+                  <p className='text-sm font-medium'>Enrollment secret</p>
+                  <p className='text-xs text-muted-foreground'>
+                    Add this account in FreeOTP or 2FAS using the secret or otpauth URI below.
+                  </p>
+                </div>
+                <label className='space-y-1'>
+                  <span className='text-xs font-medium text-muted-foreground'>Secret</span>
+                  <Input value={totpEnrollment.secret} readOnly />
+                </label>
+                <label className='space-y-1'>
+                  <span className='text-xs font-medium text-muted-foreground'>otpauth URI</span>
+                  <Textarea value={totpEnrollment.otpauthUri} readOnly className='font-mono text-xs' />
+                </label>
+                <label className='space-y-1'>
+                  <span className='text-xs font-medium text-muted-foreground'>Activation code</span>
+                  <Input
+                    value={totpEnrollmentCode}
+                    onChange={(event) => setTotpEnrollmentCode(event.target.value)}
+                    placeholder='123456'
+                  />
+                </label>
+                <div className='flex flex-wrap gap-2'>
+                  <Button type='button' onClick={handleActivateTotp}>
+                    Enable TOTP
+                  </Button>
+                  <Button
+                    type='button'
+                    variant='outline'
+                    onClick={() => {
+                      setTotpEnrollment(null)
+                      setTotpEnrollmentCode('')
+                    }}
+                  >
+                    Clear
+                  </Button>
+                </div>
+              </div>
+            ) : null}
           </div>
         </DialogContent>
       </Dialog>
