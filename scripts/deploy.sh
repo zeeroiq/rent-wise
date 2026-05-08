@@ -17,7 +17,8 @@ SPRING_PROFILES_ACTIVE="${SPRING_PROFILES_ACTIVE:-prod}"
 HEALTH_URL="${HEALTH_URL:-http://127.0.0.1:${PORT}/api/catalog/states}"
 JAVA_VERSION="${JAVA_VERSION:-25}"
 SIGNAL_CLI_VERSION="${SIGNAL_CLI_VERSION:-0.14.2}"
-SIGNAL_CLI_PATH="${SIGNAL_CLI_PATH:-/usr/local/bin/signal-cli}"
+SIGNAL_CLI_HOME="${SIGNAL_CLI_HOME:-${HOME}/app}"
+SIGNAL_CLI_PATH="${SIGNAL_CLI_PATH:-${SIGNAL_CLI_HOME}/signal-cli/bin/signal-cli}"
 
 log() {
   printf '[deploy] %s\n' "$*"
@@ -148,29 +149,29 @@ ensure_certbot_installed() {
 }
 
 ensure_signal_cli_installed() {
-  if command -v signal-cli &>/dev/null; then
-    log "signal-cli is already installed"
+  if [[ -f "${SIGNAL_CLI_PATH}" ]] && [[ -x "${SIGNAL_CLI_PATH}" ]]; then
+    log "signal-cli is already installed at ${SIGNAL_CLI_PATH}"
     return 0
   fi
 
   local version="${SIGNAL_CLI_VERSION}"
-  local install_dir="/opt/signal-cli"
   local archive="/tmp/signal-cli-${version}-Linux-native.tar.gz"
   local url="https://github.com/AsamK/signal-cli/releases/download/v${version}/signal-cli-${version}-Linux-native.tar.gz"
 
   log "Installing signal-cli ${version} from ${url}"
   curl -fL "${url}" -o "${archive}"
-  sudo mkdir -p /opt
-  sudo tar -xzf "${archive}" -C /opt
+  mkdir -p "${SIGNAL_CLI_HOME}"
+  tar -xzf "${archive}" -C "${SIGNAL_CLI_HOME}"
   local extracted_dir
-  extracted_dir="$(find /opt -maxdepth 1 -type d -name 'signal-cli*' | sort | tail -1)"
+  extracted_dir="$(find "${SIGNAL_CLI_HOME}" -maxdepth 1 -type d -name 'signal-cli*' | sort | tail -1)"
   if [[ -z "${extracted_dir}" ]]; then
-    echo "[deploy] ERROR: signal-cli archive did not extract a directory under /opt" >&2
+    echo "[deploy] ERROR: signal-cli archive did not extract a directory under ${SIGNAL_CLI_HOME}" >&2
     exit 1
   fi
-  sudo ln -sfn "${extracted_dir}" "${install_dir}"
-  sudo ln -sfn "${install_dir}/bin/signal-cli" "${SIGNAL_CLI_PATH}"
-  sudo chmod +x "${SIGNAL_CLI_PATH}"
+  # Rename extracted directory to 'signal-cli' for consistent path
+  mv "${extracted_dir}" "${SIGNAL_CLI_HOME}/signal-cli" 2>/dev/null || ln -sfn "${extracted_dir}" "${SIGNAL_CLI_HOME}/signal-cli"
+  chmod +x "${SIGNAL_CLI_PATH}"
+  log "signal-cli ${version} installed to ${SIGNAL_CLI_PATH}"
 }
 
 configure_nginx() {
@@ -341,7 +342,7 @@ TWILIO_AUTH_TOKEN=${TWILIO_AUTH_TOKEN:-}
 TWILIO_FROM_NUMBER=${TWILIO_FROM_NUMBER:-}
 TELEGRAM_BOT_TOKEN=${TELEGRAM_BOT_TOKEN:-}
 SIGNAL_ACCOUNT=${SIGNAL_ACCOUNT:-}
-SIGNAL_CLI_PATH=${SIGNAL_CLI_PATH:-/usr/local/bin/signal-cli}
+SIGNAL_CLI_PATH=${SIGNAL_CLI_PATH:-${HOME}/app/signal-cli/bin/signal-cli}
 EOF
 
 if [[ -f "${ENV_FILE}" ]]; then
