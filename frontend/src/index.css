@@ -1,27 +1,118 @@
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+@layer base {
+  :root {
+    --background: 0 0% 100%;
+    --foreground: 0 0% 12%;
+
+    --card: 0 0% 100%;
+    --card-foreground: 0 0% 12%;
+
+    --popover: 0 0% 100%;
+    --popover-foreground: 0 0% 12%;
+
+    --muted: 0 0% 37%;
+    /* muted is used for subtle text and accents; muted-foreground is the
+       readable text color when the utility `text-muted-foreground` is used.
+       The original values made `text-muted-foreground` white in light mode
+       which resulted in invisible text on light backgrounds. Use a dark
+       mid-gray in light mode and a lighter gray in dark mode below. */
+    --muted-foreground: 0 0% 37%;
+
+    --accent: 179 100% 32%;
+    --accent-foreground: 0 0% 100%;
+
+    --destructive: 0 84% 60%;
+    --destructive-foreground: 0 0% 100%;
+
+    --border: 0 0% 85%;
+    --input: 0 0% 97%;
+    --ring: 179 100% 32%;
+
+    --radius: 0.5rem;
+
+    /* RentWise brand colors */
+    --primary: 179 100% 32%;
+    --primary-foreground: 0 0% 100%;
+
+    --secondary: 11 60% 45%;
+    --secondary-foreground: 0 0% 100%;
+
+    --surface: 39 100% 97%;
+    --surface-strong: 39 76% 95%;
+    --line: 24 25% 83%;
+    --ink: 110 7% 15%;
+    --teal: 179 100% 32%;
+    --teal-soft: 179 44% 88%;
+    --clay: 14 57% 49%;
+    --clay-soft: 14 73% 88%;
+    --olive: 80 16% 41%;
+    --olive-soft: 80 21% 88%;
+    --shadow: 0 18px 40px rgb(67 49 27 / 0.08);
+  }
+
+  .dark {
+    --background: 0 0% 12%;
+    --foreground: 0 0% 98%;
+
+    --card: 0 0% 18%;
+    --card-foreground: 0 0% 98%;
+
+    --popover: 0 0% 18%;
+    --popover-foreground: 0 0% 98%;
+
+    --muted: 0 0% 63%;
+    /* In dark mode the muted color becomes lighter and the muted-foreground
+       should be a lighter value so `text-muted-foreground` remains readable
+       on darker surfaces. */
+    --muted-foreground: 0 0% 63%;
+
+    --accent: 179 100% 42%;
+    --accent-foreground: 0 0% 12%;
+
+    --destructive: 0 84% 60%;
+    --destructive-foreground: 0 0% 100%;
+
+    --border: 0 0% 20%;
+    --input: 0 0% 15%;
+    --ring: 179 100% 42%;
+
+    --surface: 0 0% 15%;
+    --surface-strong: 0 0% 18%;
+    --line: 0 0% 24%;
+    --ink: 0 0% 98%;
+
+    --teal: 179 100% 42%;
+    --teal-soft: 179 35% 20%;
+    --clay: 14 64% 62%;
+    --clay-soft: 14 28% 22%;
+    --olive: 80 12% 70%;
+    --olive-soft: 80 14% 22%;
+    --shadow: 0 18px 40px rgb(0 0 0 / 0.28);
+  }
+}
+
+@layer base {
+  * {
+    @apply border-border;
+  }
+
+  body {
+    @apply bg-background text-foreground;
+  }
+}
+
+/* Preserve existing RentWise styles */
 :root {
-  font-family: 'Avenir Next', 'Segoe UI', sans-serif;
+  font-family: 'Avenir Next', 'Segoe UI', 'Inter', sans-serif;
   line-height: 1.5;
   font-weight: 400;
-  color: #1f2624;
-  background:
-    radial-gradient(circle at top left, rgba(230, 168, 74, 0.24), transparent 26%),
-    linear-gradient(180deg, #efe8de 0%, #f7f2ea 38%, #f4efe8 100%);
   font-synthesis: none;
   text-rendering: optimizeLegibility;
   -webkit-font-smoothing: antialiased;
   -moz-osx-font-smoothing: grayscale;
-  --surface: #fff9f1;
-  --surface-strong: #f5ecdf;
-  --line: #d7cbbd;
-  --ink: #1f2624;
-  --muted: #5f6a66;
-  --teal: #145b52;
-  --teal-soft: #d9ece8;
-  --clay: #b75d3f;
-  --clay-soft: #f1dfd6;
-  --olive: #687345;
-  --olive-soft: #e4ead8;
-  --shadow: 0 18px 40px rgba(67, 49, 27, 0.08);
 }
 
 * {
@@ -41,49 +132,6 @@ textarea {
   font: inherit;
 }
 
-button,
-.oauth-button {
-  border: 1px solid var(--line);
-  border-radius: 8px;
-  background: var(--teal);
-  color: white;
-  cursor: pointer;
-  padding: 0.82rem 1rem;
-  text-decoration: none;
-  transition:
-    transform 120ms ease,
-    background 120ms ease,
-    border-color 120ms ease;
-}
-
-button:hover,
-.oauth-button:hover {
-  transform: translateY(-1px);
-}
-
-button:disabled,
-.oauth-button.disabled {
-  cursor: not-allowed;
-  opacity: 0.48;
-  pointer-events: none;
-}
-
-.ghost-button {
-  background: transparent;
-  color: var(--teal);
-}
-
-input,
-select,
-textarea {
-  width: 100%;
-  border: 1px solid var(--line);
-  border-radius: 8px;
-  background: var(--surface);
-  color: var(--ink);
-  padding: 0.82rem 0.9rem;
-}
-
 textarea {
   min-height: 8.25rem;
   resize: vertical;
@@ -92,7 +140,7 @@ textarea {
 label {
   display: grid;
   gap: 0.45rem;
-  color: var(--muted);
+  color: hsl(var(--muted));
 }
 
 label span {
@@ -114,8 +162,8 @@ label span {
   gap: 1rem;
   align-items: flex-end;
   padding: 1.6rem 1.8rem;
-  background: rgba(255, 249, 241, 0.86);
-  border: 1px solid rgba(215, 203, 189, 0.88);
+  background: hsl(var(--surface) / 0.86);
+  border: 1px solid hsl(var(--line) / 0.88);
   border-radius: 8px;
   box-shadow: var(--shadow);
 }
@@ -129,7 +177,7 @@ label span {
 
 .eyebrow {
   margin: 0 0 0.45rem;
-  color: var(--clay);
+  color: hsl(var(--clay));
   text-transform: uppercase;
   font-size: 0.76rem;
 }
@@ -147,20 +195,20 @@ label span {
 .score-chip,
 .rating-badges span,
 .signal-list span {
-  border: 1px solid var(--line);
+  border: 1px solid hsl(var(--line));
   border-radius: 8px;
 }
 
 .status-item,
 .session-badge {
-  background: var(--surface);
+  background: hsl(var(--surface));
   padding: 0.85rem 1rem;
   display: grid;
   gap: 0.2rem;
 }
 
 .status-label {
-  color: var(--muted);
+  color: hsl(var(--muted));
   font-size: 0.82rem;
 }
 
@@ -183,8 +231,8 @@ label span {
 .landlord-band,
 .review-band,
 .composer-band {
-  background: rgba(255, 249, 241, 0.94);
-  border: 1px solid rgba(215, 203, 189, 0.9);
+  background: hsl(var(--surface) / 0.94);
+  border: 1px solid hsl(var(--line) / 0.9);
   border-radius: 8px;
   box-shadow: var(--shadow);
   padding: 1rem;
@@ -218,7 +266,7 @@ label span {
 .comment-body p,
 .property-tile p,
 .property-tile small {
-  color: var(--muted);
+  color: hsl(var(--muted));
 }
 
 .segmented-control {
@@ -227,15 +275,19 @@ label span {
   gap: 0.5rem;
 }
 
+.segmented-control.three {
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+}
+
 .segment {
-  background: var(--surface);
-  color: var(--teal);
+  background: hsl(var(--surface));
+  color: hsl(var(--teal));
 }
 
 .segment.active {
-  background: var(--teal);
+  background: hsl(var(--teal));
   color: white;
-  border-color: var(--teal);
+  border-color: hsl(var(--teal));
 }
 
 .inline-actions,
@@ -269,14 +321,14 @@ label span {
 
 .property-tile {
   text-align: left;
-  background: var(--surface);
-  color: var(--ink);
+  background: hsl(var(--surface));
+  color: hsl(var(--ink));
   padding: 1rem;
 }
 
-.property-tile.active {
-  border-color: var(--teal);
-  background: var(--teal-soft);
+  .property-tile.active {
+  border-color: hsl(var(--teal));
+  background: hsl(var(--teal-soft));
 }
 
 .summary-strip {
@@ -290,15 +342,15 @@ label span {
   gap: 0.75rem;
 }
 
-.score-chip {
-  background: var(--surface);
+  .score-chip {
+  background: hsl(var(--surface));
   padding: 0.9rem;
   display: grid;
   gap: 0.15rem;
 }
 
-.score-chip span {
-  color: var(--muted);
+  .score-chip span {
+  color: hsl(var(--muted));
   font-size: 0.82rem;
 }
 
@@ -306,8 +358,8 @@ label span {
   font-size: 1.55rem;
 }
 
-.score-chip.accent {
-  background: var(--clay-soft);
+  .score-chip.accent {
+  background: hsl(var(--clay-soft));
 }
 
 .landlord-grid {
@@ -320,12 +372,12 @@ label span {
   grid-column: 1 / -1;
 }
 
-.review-card {
+  .review-card {
   display: grid;
   gap: 1rem;
   padding: 1rem;
-  background: var(--surface);
-  border: 1px solid var(--line);
+  background: hsl(var(--surface));
+  border: 1px solid hsl(var(--line));
   border-radius: 8px;
 }
 
@@ -337,11 +389,11 @@ label span {
   gap: 0.5rem;
 }
 
-.rating-badges span,
-.signal-list span {
-  background: var(--surface-strong);
+  .rating-badges span,
+  .signal-list span {
+  background: hsl(var(--surface-strong));
   padding: 0.45rem 0.6rem;
-  color: var(--ink);
+  color: hsl(var(--ink));
 }
 
 .review-copy-grid {
@@ -350,26 +402,26 @@ label span {
   gap: 0.9rem 1.2rem;
 }
 
-.review-copy-grid section {
+  .review-copy-grid section {
   padding: 0.85rem;
-  background: #fffcf7;
-  border: 1px solid var(--line);
+  background: hsl(var(--surface));
+  border: 1px solid hsl(var(--line));
   border-radius: 8px;
 }
 
-.review-copy-grid p {
+  .review-copy-grid p {
   margin: 0.4rem 0 0;
-  color: var(--muted);
+  color: hsl(var(--muted));
 }
 
-.vote-button {
-  background: var(--surface);
-  color: var(--ink);
+  .vote-button {
+  background: hsl(var(--surface));
+  color: hsl(var(--ink));
 }
 
-.vote-button.active {
-  background: var(--olive-soft);
-  border-color: var(--olive);
+  .vote-button.active {
+  background: hsl(var(--olive-soft));
+  border-color: hsl(var(--olive));
 }
 
 .thread-block {
@@ -382,9 +434,9 @@ label span {
   gap: 0.7rem;
 }
 
-.comment-body {
-  background: #fffcf7;
-  border: 1px solid var(--line);
+  .comment-body {
+  background: hsl(var(--surface));
+  border: 1px solid hsl(var(--line));
   border-radius: 8px;
   padding: 0.9rem;
 }
@@ -393,15 +445,15 @@ label span {
   margin: 0 0 0.55rem;
 }
 
-.comment-children {
+  .comment-children {
   display: grid;
   gap: 0.7rem;
   padding-left: 1rem;
-  border-left: 2px solid var(--teal-soft);
+  border-left: 2px solid hsl(var(--teal-soft));
 }
 
-.reply-meta strong {
-  color: var(--ink);
+  .reply-meta strong {
+  color: hsl(var(--ink));
 }
 
 .form-grid {
@@ -418,31 +470,31 @@ label span {
   grid-template-columns: repeat(3, minmax(0, 1fr));
 }
 
-.slider-field {
+  .slider-field {
   padding: 0.85rem;
-  border: 1px solid var(--line);
+  border: 1px solid hsl(var(--line));
   border-radius: 8px;
-  background: var(--surface);
+  background: hsl(var(--surface));
 }
 
-.slider-field input {
+  .slider-field input {
   padding: 0;
   border: 0;
-  accent-color: var(--clay);
+  accent-color: hsl(var(--clay));
 }
 
 .checkbox-row {
   grid-template-columns: repeat(3, minmax(0, 1fr));
 }
 
-.checkbox-field {
+  .checkbox-field {
   display: flex;
   gap: 0.65rem;
   align-items: center;
   padding: 0.8rem;
-  border: 1px solid var(--line);
+  border: 1px solid hsl(var(--line));
   border-radius: 8px;
-  background: var(--surface);
+  background: hsl(var(--surface));
 }
 
 .checkbox-field input {
@@ -455,30 +507,199 @@ label span {
   min-height: 6rem;
 }
 
-.banner {
+  .banner {
   padding: 0.85rem 1rem;
-  background: var(--teal-soft);
+  background: hsl(var(--teal-soft));
+  color: hsl(var(--foreground));
 }
 
-.banner.error {
-  background: var(--clay-soft);
-  color: #6e2a17;
+  .banner.error {
+  background: hsl(var(--clay-soft));
+  color: hsl(var(--foreground));
 }
 
-.banner.success {
-  background: var(--olive-soft);
-  color: #324215;
+  .banner.success {
+  background: hsl(var(--olive-soft));
+  color: hsl(var(--foreground));
 }
 
-.empty-state {
+  .empty-state {
   padding: 1.25rem;
-  border: 1px dashed var(--line);
+  border: 1px dashed hsl(var(--line));
   border-radius: 8px;
-  background: rgba(255, 249, 241, 0.7);
-  color: var(--muted);
+  background: hsl(var(--surface) / 0.7);
+  color: hsl(var(--muted));
+}
+
+/* Admin Panel Styles */
+  .admin-badge {
+  padding: 0.6rem 0.8rem;
+  font-size: 0.82rem;
+  background: hsl(var(--clay-soft));
+  color: hsl(var(--clay));
+  border-color: hsl(var(--clay));
+}
+
+  .admin-badge.active {
+  background: hsl(var(--clay));
+  color: white;
+}
+
+.workspace.admin-view {
+  grid-template-columns: 1fr;
+}
+
+  .admin-panel {
+  background: hsl(var(--surface) / 0.94);
+  border: 1px solid hsl(var(--line) / 0.9);
+  border-radius: 8px;
+  box-shadow: var(--shadow);
+  padding: 2rem;
+}
+
+.admin-header h2 {
+  margin: 0 0 0.5rem;
+}
+
+  .admin-header p {
+  color: hsl(var(--muted));
+  margin: 0;
+}
+
+  .admin-tabs {
+  display: flex;
+  gap: 0.5rem;
+  margin: 1.5rem 0;
+  border-bottom: 2px solid hsl(var(--line));
+}
+
+  .tab-button {
+  padding: 0.75rem 1rem;
+  background: transparent;
+  color: hsl(var(--muted));
+  border: none;
+  border-bottom: 3px solid transparent;
+  cursor: pointer;
+  font-weight: 500;
+  transition: all 120ms ease;
+}
+
+  .tab-button:hover {
+  color: hsl(var(--teal));
+}
+
+  .tab-button.active {
+  color: hsl(var(--teal));
+  border-bottom-color: hsl(var(--teal));
+}
+
+.admin-content {
+  padding: 1rem 0;
+}
+
+.admin-section {
+  display: grid;
+  gap: 1rem;
+}
+
+.admin-section h3 {
+  margin: 0;
+  font-size: 1.25rem;
+}
+
+  .admin-form {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 0.75rem;
+  padding: 1rem;
+  background: hsl(var(--surface));
+  border: 1px solid hsl(var(--line));
+  border-radius: 8px;
+}
+
+.admin-form label {
+  display: grid;
+}
+
+.admin-form button {
+  grid-column: 1 / -1;
+}
+
+.items-list {
+  display: grid;
+  gap: 0.75rem;
+  max-height: 30rem;
+  overflow-y: auto;
+}
+
+  .item-card {
+  background: hsl(var(--surface));
+  border: 1px solid hsl(var(--line));
+  border-radius: 8px;
+  padding: 1rem;
+  display: grid;
+  gap: 0.75rem;
+}
+
+.item-header {
+  display: flex;
+  justify-content: space-between;
+  gap: 1rem;
+  align-items: center;
+}
+
+.item-header > div:first-child {
+  display: grid;
+  gap: 0.25rem;
+  flex: 1;
+}
+
+.item-header strong {
+  font-size: 1rem;
+}
+
+  .item-header small {
+  color: hsl(var(--muted));
+  font-size: 0.82rem;
+}
+
+.item-actions {
+  display: flex;
+  gap: 0.5rem;
+}
+
+.item-actions button {
+  padding: 0.6rem 0.8rem;
+  font-size: 0.82rem;
+}
+
+  .item-actions .danger {
+  background: hsl(var(--clay-soft));
+  color: hsl(var(--clay));
+  border-color: hsl(var(--clay));
+}
+
+  .item-actions .danger:hover {
+  background: hsl(var(--clay));
+  color: white;
+}
+
+  .item-details {
+  padding-top: 0.5rem;
+  border-top: 1px solid hsl(var(--line));
+  color: hsl(var(--muted));
+  font-size: 0.88rem;
+}
+
+.item-details p {
+  margin: 0.25rem 0;
 }
 
 @media (max-width: 1100px) {
+  .admin-form {
+    grid-template-columns: 1fr;
+  }
+
   .workspace {
     grid-template-columns: 1fr;
   }

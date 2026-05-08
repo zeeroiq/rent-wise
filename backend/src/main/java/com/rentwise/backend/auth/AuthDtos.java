@@ -13,6 +13,26 @@ record OtpRequestCommand(
 ) {
 }
 
+record TotpLoginCommand(
+        @NotBlank String identifier,
+        @NotBlank String code
+) {
+}
+
+record TotpEnrollmentResponse(
+        String issuer,
+        String accountName,
+        String secret,
+        String otpauthUri,
+        boolean enabled
+) {
+}
+
+record TotpActivateCommand(
+        @NotBlank String code
+) {
+}
+
 record OtpChallengeResponse(
         Long challengeId,
         String destination,

@@ -8,41 +8,6 @@ import jakarta.validation.constraints.NotNull;
 import java.time.LocalDateTime;
 import java.util.List;
 
-record LandlordDto(
-        Long id,
-        String name,
-        String email,
-        String phoneNumber,
-        String managementStyle
-) {
-}
-
-record ScorecardDto(
-        int overallScore,
-        int landlordScore,
-        int propertyScore,
-        String recommendation,
-        int reviewCount,
-        int unresolvedIssueCount,
-        int depositDisputeCount
-) {
-}
-
-record PropertyCardDto(
-        Long id,
-        String title,
-        String propertyType,
-        String addressLine1,
-        String locality,
-        String city,
-        String state,
-        String postalCode,
-        String highlights,
-        String landlordName,
-        ScorecardDto scorecard
-) {
-}
-
 record VoteSummaryDto(
         long helpful,
         long notHelpful,
@@ -81,22 +46,6 @@ record ReviewDto(
         LocalDateTime createdAt,
         VoteSummaryDto votes,
         List<ReviewCommentDto> thread
-) {
-}
-
-record PropertyDetailDto(
-        Long id,
-        String title,
-        String propertyType,
-        String addressLine1,
-        String locality,
-        String city,
-        String state,
-        String postalCode,
-        String highlights,
-        LandlordDto landlord,
-        ScorecardDto scorecard,
-        List<ReviewDto> reviews
 ) {
 }
 

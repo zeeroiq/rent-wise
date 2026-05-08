@@ -1,8 +1,10 @@
 package com.rentwise.backend.web;
 
 import com.rentwise.backend.auth.RentwisePrincipal;
+import com.rentwise.backend.location.*;
 import com.rentwise.backend.landlord.Landlord;
 import com.rentwise.backend.property.Property;
+import com.rentwise.backend.property.PropertyStatus;
 import com.rentwise.backend.property.PropertyRepository;
 import com.rentwise.backend.review.Review;
 import com.rentwise.backend.review.ReviewComment;
@@ -28,6 +30,9 @@ import org.springframework.transaction.annotation.Transactional;
 @Transactional
 public class AppService {
     private final PropertyRepository propertyRepository;
+    private final CountryRepository countryRepository;
+    private final StateRepository stateRepository;
+    private final CityRepository cityRepository;
     private final ReviewRepository reviewRepository;
     private final ReviewCommentRepository reviewCommentRepository;
     private final ReviewVoteRepository reviewVoteRepository;
@@ -35,12 +40,18 @@ public class AppService {
 
     public AppService(
             PropertyRepository propertyRepository,
+            CountryRepository countryRepository,
+            StateRepository stateRepository,
+            CityRepository cityRepository,
             ReviewRepository reviewRepository,
             ReviewCommentRepository reviewCommentRepository,
             ReviewVoteRepository reviewVoteRepository,
             AppUserRepository appUserRepository
     ) {
         this.propertyRepository = propertyRepository;
+        this.countryRepository = countryRepository;
+        this.stateRepository = stateRepository;
+        this.cityRepository = cityRepository;
         this.reviewRepository = reviewRepository;
         this.reviewCommentRepository = reviewCommentRepository;
         this.reviewVoteRepository = reviewVoteRepository;
@@ -48,25 +59,60 @@ public class AppService {
     }
 
     @Transactional(readOnly = true)
-    public List<String> states() {
-        return propertyRepository.findDistinctStates();
+    public List<String> countries() {
+        return countryRepository.findAllByOrderByName().stream()
+                .map(Country::getName)
+                .toList();
     }
 
     @Transactional(readOnly = true)
-    public List<String> cities(String state) {
-        return propertyRepository.findDistinctCities(state);
+    public List<String> states(String country) {
+        if (!hasText(country)) {
+            return List.of();
+        }
+        return countryRepository.findByNameIgnoreCase(country.trim())
+                .map(found -> stateRepository.findByCountryIdOrderByName(found.getId()).stream()
+                        .map(State::getName)
+                        .toList())
+                .orElse(List.of());
+    }
+
+    @Transactional(readOnly = true)
+    public List<String> cities(String country, String state) {
+        if (!hasText(country) || !hasText(state)) {
+            return List.of();
+        }
+        return countryRepository.findByNameIgnoreCase(country.trim())
+                .flatMap(foundCountry -> stateRepository.findByCountryIdAndName(foundCountry.getId(), state.trim()))
+                .map(foundState -> cityRepository.findByStateIdOrderByName(foundState.getId()).stream()
+                        .map(City::getName)
+                        .toList())
+                .orElse(List.of());
     }
 
     @Transactional(readOnly = true)
     public List<String> localities(String state, String city) {
-        return propertyRepository.findDistinctLocalities(state, city);
+        return propertyRepository.findDistinctLocalities(state, city, PropertyStatus.ACTIVE);
     }
 
     @Transactional(readOnly = true)
     public List<PropertyCardDto> search(String state, String city, String locality) {
-        return propertyRepository.search(normalize(state), normalize(city), normalize(locality)).stream()
+        return propertyRepository.search(
+                        normalize(state),
+                        normalize(city),
+                        normalize(locality),
+                        PropertyStatus.ACTIVE
+                ).stream()
                 .map(property -> {
                     List<Review> reviews = reviewRepository.findByPropertyIdOrderByCreatedAtDesc(property.getId());
+                    Map<Long, List<ReviewVote>> votesByReviewId = new HashMap<>();
+                    if (!reviews.isEmpty()) {
+                        List<ReviewVote> votes = reviewVoteRepository.findByReviewIdIn(reviews.stream().map(Review::getId).toList());
+                        for (ReviewVote vote : votes) {
+                            votesByReviewId.computeIfAbsent(vote.getReview().getId(), ignored -> new ArrayList<>()).add(vote);
+                        }
+                    }
+                    ScorecardDto scorecard = buildScorecard(reviews, votesByReviewId);
                     return new PropertyCardDto(
                             property.getId(),
                             property.getTitle(),
@@ -78,7 +124,9 @@ public class AppService {
                             property.getPostalCode(),
                             property.getHighlights(),
                             property.getLandlord().getName(),
-                            buildScorecard(reviews, Map.of())
+                            property.getStatus(),
+                            property.getOnboardingDate(),
+                            scorecard
                     );
                 })
                 .toList();
@@ -187,10 +235,29 @@ public class AppService {
                 property.getState(),
                 property.getPostalCode(),
                 property.getHighlights(),
+                property.getOnboardingDate(),
+                property.getExitDate(),
+                property.getMonthlyRent(),
+                property.getDepositAmount(),
+                property.getPropertyConditionOnEntry(),
+                property.getPropertyConditionOnExit(),
+                property.getAmenities(),
+                property.getFurnishingType(),
+                property.getOccupancyType(),
+                property.getStatus(),
+                property.getCreatedAt(),
+                property.getUpdatedAt(),
                 mapLandlord(property.getLandlord()),
                 buildScorecard(reviews, votesByReviewId),
-                reviewDtos
+                reviewDtos,
+                property.getCreatedBy() != null ? toSessionUser(property.getCreatedBy()) : null,
+                property.getVerifiedBy() != null ? toSessionUser(property.getVerifiedBy()) : null,
+                property.getVerifiedAt()
         );
+    }
+
+    private boolean hasText(String value) {
+        return value != null && !value.trim().isEmpty();
     }
 
     private ReviewDto mapReview(Review review, List<ReviewComment> comments, List<ReviewVote> votes, Long currentUserId) {
@@ -312,7 +379,15 @@ public class AppService {
     }
 
     private SessionUserDto toSessionUser(AppUser user) {
-        return new SessionUserDto(user.getId(), user.getDisplayName(), user.getEmail(), user.getMobileNumber(), user.getAvatarUrl());
+        return new SessionUserDto(
+                user.getId(),
+                user.getDisplayName(),
+                user.getEmail(),
+                user.getMobileNumber(),
+                user.getAvatarUrl(),
+                user.isAdmin(),
+                user.isTotpEnabled()
+        );
     }
 
     private LandlordDto mapLandlord(Landlord landlord) {

@@ -1,7 +1,11 @@
 package com.rentwise.backend.property;
 
+import com.rentwise.backend.landlord.Landlord;
+import com.rentwise.backend.user.AppUser;
 import java.util.List;
 import java.util.Optional;
+import org.springframework.data.domain.Page;
+import org.springframework.data.domain.Pageable;
 import org.springframework.data.jpa.repository.JpaRepository;
 import org.springframework.data.jpa.repository.Query;
 import org.springframework.data.repository.query.Param;
@@ -27,9 +31,14 @@ public interface PropertyRepository extends JpaRepository<Property, Long> {
             from Property p
             where lower(p.state) = lower(:state)
               and lower(p.city) = lower(:city)
+              and p.status = :status
             order by p.locality
             """)
-    List<String> findDistinctLocalities(@Param("state") String state, @Param("city") String city);
+    List<String> findDistinctLocalities(
+            @Param("state") String state,
+            @Param("city") String city,
+            @Param("status") PropertyStatus status
+    );
 
     @Query("""
             select p
@@ -38,12 +47,14 @@ public interface PropertyRepository extends JpaRepository<Property, Long> {
             where (:state is null or lower(p.state) = lower(:state))
               and (:city is null or lower(p.city) = lower(:city))
               and (:locality is null or lower(p.locality) = lower(:locality))
+              and p.status = :status
             order by p.state, p.city, p.locality, p.title
             """)
     List<Property> search(
             @Param("state") String state,
             @Param("city") String city,
-            @Param("locality") String locality
+            @Param("locality") String locality,
+            @Param("status") PropertyStatus status
     );
 
     @Query("""
@@ -53,4 +64,17 @@ public interface PropertyRepository extends JpaRepository<Property, Long> {
             where p.id = :id
             """)
     Optional<Property> findDetailedById(@Param("id") Long id);
+
+    // New query methods for property status and filtering
+    Page<Property> findByStatus(PropertyStatus status, Pageable pageable);
+
+    Page<Property> findByCreatedBy(AppUser createdBy, Pageable pageable);
+
+    Page<Property> findByLandlord(Landlord landlord, Pageable pageable);
+
+    List<Property> findByCityContainingIgnoreCaseOrLocalityContainingIgnoreCaseOrTitleContainingIgnoreCase(
+            String city,
+            String locality,
+            String title
+    );
 }

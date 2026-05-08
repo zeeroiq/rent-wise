@@ -5,6 +5,27 @@
     <link rel="icon" type="image/svg+xml" href="/favicon.svg" />
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
     <title>frontend</title>
+    <script>
+      ;(() => {
+        try {
+          const stored = localStorage.getItem('theme')
+          const pref =
+            stored === 'light' || stored === 'dark' || stored === 'system'
+              ? stored
+              : 'system'
+          const systemDark =
+            window.matchMedia &&
+            window.matchMedia('(prefers-color-scheme: dark)').matches
+          const resolved = pref === 'system' ? (systemDark ? 'dark' : 'light') : pref
+          const root = document.documentElement
+          root.dataset.theme = resolved
+          root.style.colorScheme = resolved
+          if (resolved === 'dark') root.classList.add('dark')
+        } catch {
+          // Ignore; theming will be applied by React after boot.
+        }
+      })()
+    </script>
   </head>
   <body>
     <div id="root"></div>

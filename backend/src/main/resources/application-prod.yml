@@ -1,4 +1,15 @@
 spring:
+  mail:
+    host: ${SPRING_MAIL_HOST}
+    port: ${SPRING_MAIL_PORT:587}
+    username: ${SPRING_MAIL_USERNAME}
+    password: ${SPRING_MAIL_PASSWORD}
+    properties:
+      mail:
+        smtp:
+          auth: true
+          starttls:
+            enable: true
   h2:
     console:
       enabled: false
@@ -24,5 +35,20 @@ server:
   forward-headers-strategy: framework
 
 app:
+  mail:
+    from: ${APP_MAIL_FROM:rentwise@zeeroiq.com}
+  sms:
+    account-sid: ${TWILIO_ACCOUNT_SID:-give-me-a-twilio-account-sid}
+    auth-token: ${TWILIO_AUTH_TOKEN:-give-me-a-twilio-auth-token}
+    from-number: ${TWILIO_FROM_NUMBER:+1234567890}
+  telegram:
+    bot-token: ${TELEGRAM_BOT_TOKEN:-give-me-a-telegram-bot-token}
+  signal:
+    account: ${SIGNAL_ACCOUNT:+1234567890}
+    cli-path: ${SIGNAL_CLI_PATH:signal-cli}
+  totp:
+    issuer: ${APP_TOTP_ISSUER:RentWise}
+    period-seconds: ${APP_TOTP_PERIOD_SECONDS:30}
+    digits: ${APP_TOTP_DIGITS:6}
   otp:
     expose-dev-code: false

@@ -5,3 +5,9 @@ backend/build
 backend/data
 deploy/*.env
 .DS_Store
+
+.idea
+.vscode
+
+data
+*.db

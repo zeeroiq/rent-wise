@@ -16,6 +16,9 @@ PORT="${PORT:-8080}"
 SPRING_PROFILES_ACTIVE="${SPRING_PROFILES_ACTIVE:-prod}"
 HEALTH_URL="${HEALTH_URL:-http://127.0.0.1:${PORT}/api/catalog/states}"
 JAVA_VERSION="${JAVA_VERSION:-25}"
+SIGNAL_CLI_VERSION="${SIGNAL_CLI_VERSION:-0.14.2}"
+SIGNAL_CLI_HOME="${SIGNAL_CLI_HOME:-${HOME}/app}"
+SIGNAL_CLI_PATH="${SIGNAL_CLI_PATH:-${SIGNAL_CLI_HOME}/signal-cli/bin/signal-cli}"
 
 log() {
   printf '[deploy] %s\n' "$*"
@@ -143,6 +146,32 @@ ensure_certbot_installed() {
 
   echo "[deploy] ERROR: certbot not found and no package manager available" >&2
   exit 1
+}
+
+ensure_signal_cli_installed() {
+  if [[ -f "${SIGNAL_CLI_PATH}" ]] && [[ -x "${SIGNAL_CLI_PATH}" ]]; then
+    log "signal-cli is already installed at ${SIGNAL_CLI_PATH}"
+    return 0
+  fi
+
+  local version="${SIGNAL_CLI_VERSION}"
+  local archive="/tmp/signal-cli-${version}-Linux-native.tar.gz"
+  local url="https://github.com/AsamK/signal-cli/releases/download/v${version}/signal-cli-${version}-Linux-native.tar.gz"
+
+  log "Installing signal-cli ${version} from ${url}"
+  curl -fL "${url}" -o "${archive}"
+  mkdir -p "${SIGNAL_CLI_HOME}"
+  tar -xzf "${archive}" -C "${SIGNAL_CLI_HOME}"
+  local extracted_dir
+  extracted_dir="$(find "${SIGNAL_CLI_HOME}" -maxdepth 1 -type d -name 'signal-cli*' | sort | tail -1)"
+  if [[ -z "${extracted_dir}" ]]; then
+    echo "[deploy] ERROR: signal-cli archive did not extract a directory under ${SIGNAL_CLI_HOME}" >&2
+    exit 1
+  fi
+  # Rename extracted directory to 'signal-cli' for consistent path
+  mv "${extracted_dir}" "${SIGNAL_CLI_HOME}/signal-cli" 2>/dev/null || ln -sfn "${extracted_dir}" "${SIGNAL_CLI_HOME}/signal-cli"
+  chmod +x "${SIGNAL_CLI_PATH}"
+  log "signal-cli ${version} installed to ${SIGNAL_CLI_PATH}"
 }
 
 configure_nginx() {
@@ -289,6 +318,9 @@ ensure_nginx_installed
 # Ensure certbot is installed
 ensure_certbot_installed
 
+# Ensure signal-cli is installed for Signal OTP delivery
+ensure_signal_cli_installed
+
 mkdir -p "${SHARED_DIR}" "${RELEASES_DIR}" "${LOG_DIR}"
 log "Deploying ${APP_NAME} into ${DEPLOY_DIR}"
 
@@ -297,6 +329,20 @@ log "Creating environment file with secrets"
 cat > "${ENV_FILE}" <<EOF
 GOOGLE_CLIENT_ID=${GOOGLE_CLIENT_ID:-}
 GOOGLE_CLIENT_SECRET=${GOOGLE_CLIENT_SECRET:-}
+SPRING_MAIL_HOST=${SPRING_MAIL_HOST:-}
+SPRING_MAIL_PORT=${SPRING_MAIL_PORT:-587}
+SPRING_MAIL_USERNAME=${SPRING_MAIL_USERNAME:-}
+SPRING_MAIL_PASSWORD=${SPRING_MAIL_PASSWORD:-}
+APP_MAIL_FROM=${APP_MAIL_FROM:-rentwise@zeeroiq.com}
+APP_TOTP_ISSUER=${APP_TOTP_ISSUER:-RentWise}
+APP_TOTP_PERIOD_SECONDS=${APP_TOTP_PERIOD_SECONDS:-30}
+APP_TOTP_DIGITS=${APP_TOTP_DIGITS:-6}
+TWILIO_ACCOUNT_SID=${TWILIO_ACCOUNT_SID:-}
+TWILIO_AUTH_TOKEN=${TWILIO_AUTH_TOKEN:-}
+TWILIO_FROM_NUMBER=${TWILIO_FROM_NUMBER:-}
+TELEGRAM_BOT_TOKEN=${TELEGRAM_BOT_TOKEN:-}
+SIGNAL_ACCOUNT=${SIGNAL_ACCOUNT:-}
+SIGNAL_CLI_PATH=${SIGNAL_CLI_PATH:-${HOME}/app/signal-cli/bin/signal-cli}
 EOF
 
 if [[ -f "${ENV_FILE}" ]]; then

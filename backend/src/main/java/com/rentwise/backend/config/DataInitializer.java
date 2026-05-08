@@ -3,8 +3,18 @@ package com.rentwise.backend.config;
 import com.rentwise.backend.auth.AuthProvider;
 import com.rentwise.backend.landlord.Landlord;
 import com.rentwise.backend.landlord.LandlordRepository;
+import com.rentwise.backend.location.City;
+import com.rentwise.backend.location.CityRepository;
+import com.rentwise.backend.location.Country;
+import com.rentwise.backend.location.CountryRepository;
+import com.rentwise.backend.location.State;
+import com.rentwise.backend.location.StateRepository;
 import com.rentwise.backend.property.Property;
 import com.rentwise.backend.property.PropertyRepository;
+import com.rentwise.backend.property.PropertyCondition;
+import com.rentwise.backend.property.FurnishingType;
+import com.rentwise.backend.property.OccupancyType;
+import com.rentwise.backend.property.PropertyStatus;
 import com.rentwise.backend.review.Review;
 import com.rentwise.backend.review.ReviewComment;
 import com.rentwise.backend.review.ReviewCommentRepository;
@@ -17,6 +27,7 @@ import com.rentwise.backend.user.AppUserRepository;
 import org.springframework.boot.CommandLineRunner;
 import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Configuration;
+import java.time.LocalDate;
 
 @Configuration
 public class DataInitializer {
@@ -27,16 +38,52 @@ public class DataInitializer {
             PropertyRepository propertyRepository,
             ReviewRepository reviewRepository,
             ReviewCommentRepository reviewCommentRepository,
-            ReviewVoteRepository reviewVoteRepository
+            ReviewVoteRepository reviewVoteRepository,
+            CountryRepository countryRepository,
+            StateRepository stateRepository,
+            CityRepository cityRepository
     ) {
         return args -> {
             if (propertyRepository.count() > 0) {
                 return;
             }
 
+            // Create admin user
+            userRepository.save(new AppUser("Admin", "admin@example.com", null, AuthProvider.OTP_EMAIL, null, true));
             AppUser aisha = userRepository.save(new AppUser("Aisha", "aisha@example.com", null, AuthProvider.OTP_EMAIL, null));
             AppUser karan = userRepository.save(new AppUser("Karan", "karan@example.com", null, AuthProvider.GOOGLE, null));
             AppUser meera = userRepository.save(new AppUser("Meera", null, "+15550001001", AuthProvider.OTP_MOBILE, null));
+
+            // Create countries
+            Country usa = countryRepository.save(new Country("US", "United States"));
+            Country india = countryRepository.save(new Country("IN", "India"));
+
+            // Create states for USA
+            State california = stateRepository.save(new State(usa, "CA", "California"));
+            State newyork = stateRepository.save(new State(usa, "NY", "New York"));
+            State texas = stateRepository.save(new State(usa, "TX", "Texas"));
+            State florida = stateRepository.save(new State(usa, "FL", "Florida"));
+            State illinois = stateRepository.save(new State(usa, "IL", "Illinois"));
+
+            // Create states for India
+            State karnataka = stateRepository.save(new State(india, "KA", "Karnataka"));
+            State maharashtra = stateRepository.save(new State(india, "MH", "Maharashtra"));
+
+            // Create cities for USA states
+            cityRepository.save(new City(california, "LA", "Los Angeles"));
+            cityRepository.save(new City(california, "SF", "San Francisco"));
+            cityRepository.save(new City(newyork, "NYC", "New York City"));
+            cityRepository.save(new City(newyork, "BUF", "Buffalo"));
+            cityRepository.save(new City(texas, "HOU", "Houston"));
+            cityRepository.save(new City(texas, "DAL", "Dallas"));
+            cityRepository.save(new City(florida, "MIA", "Miami"));
+            cityRepository.save(new City(florida, "ORL", "Orlando"));
+            cityRepository.save(new City(illinois, "CHI", "Chicago"));
+            cityRepository.save(new City(illinois, "SPR", "Springfield"));
+
+            // Create cities for India states
+            cityRepository.save(new City(karnataka, "BLR", "Bengaluru"));
+            cityRepository.save(new City(maharashtra, "MUM", "Mumbai"));
 
             Landlord patel = landlordRepository.save(new Landlord(
                     "Harish Patel",
@@ -60,8 +107,21 @@ public class DataInitializer {
                     "Karnataka",
                     "560038",
                     "Walkable block, backup power, but narrow visitor parking.",
-                    patel
+                    patel,
+                    LocalDate.of(2023, 6, 15),
+                    aisha
             ));
+            indiranagar.setMonthlyRent(java.math.BigDecimal.valueOf(18000));
+            indiranagar.setDepositAmount(java.math.BigDecimal.valueOf(36000));
+            indiranagar.setPropertyConditionOnEntry(PropertyCondition.GOOD);
+            indiranagar.setPropertyConditionOnExit(PropertyCondition.FAIR);
+            indiranagar.setExitDate(LocalDate.of(2024, 12, 31));
+            indiranagar.setFurnishingType(FurnishingType.SEMI_FURNISHED);
+            indiranagar.setOccupancyType(OccupancyType.SOLO);
+            indiranagar.setAmenities("WiFi,Parking,Gym,Balcony,AC");
+            indiranagar.setStatus(PropertyStatus.ACTIVE);
+            propertyRepository.save(indiranagar);
+
             Property koramangala = propertyRepository.save(new Property(
                     "Lakeview Annex",
                     "Studio",
@@ -71,8 +131,21 @@ public class DataInitializer {
                     "Karnataka",
                     "560095",
                     "Quiet side street near offices and cafes.",
-                    fernandez
+                    fernandez,
+                    LocalDate.of(2023, 9, 1),
+                    karan
             ));
+            koramangala.setMonthlyRent(java.math.BigDecimal.valueOf(22000));
+            koramangala.setDepositAmount(java.math.BigDecimal.valueOf(44000));
+            koramangala.setPropertyConditionOnEntry(PropertyCondition.EXCELLENT);
+            koramangala.setPropertyConditionOnExit(PropertyCondition.EXCELLENT);
+            koramangala.setExitDate(LocalDate.of(2024, 8, 31));
+            koramangala.setFurnishingType(FurnishingType.FULLY_FURNISHED);
+            koramangala.setOccupancyType(OccupancyType.SOLO);
+            koramangala.setAmenities("WiFi,Parking,Pool,Furnished,AC");
+            koramangala.setStatus(PropertyStatus.ACTIVE);
+            propertyRepository.save(koramangala);
+
             Property andheri = propertyRepository.save(new Property(
                     "Palm Court",
                     "Apartment",
@@ -82,8 +155,96 @@ public class DataInitializer {
                     "Maharashtra",
                     "400053",
                     "Lift worked well, frequent monsoon seepage on top floor units.",
-                    patel
+                    patel,
+                    LocalDate.of(2023, 3, 10),
+                    meera
             ));
+            andheri.setMonthlyRent(java.math.BigDecimal.valueOf(25000));
+            andheri.setDepositAmount(java.math.BigDecimal.valueOf(50000));
+            andheri.setPropertyConditionOnEntry(PropertyCondition.GOOD);
+            andheri.setPropertyConditionOnExit(PropertyCondition.FAIR);
+            andheri.setExitDate(LocalDate.of(2024, 9, 30));
+            andheri.setFurnishingType(FurnishingType.SEMI_FURNISHED);
+            andheri.setOccupancyType(OccupancyType.FAMILY);
+            andheri.setAmenities("WiFi,Parking,Lift,AC,Balcony");
+            andheri.setStatus(PropertyStatus.ACTIVE);
+            propertyRepository.save(andheri);
+
+            // Additional sample properties with different statuses
+            // Property with PENDING_VERIFICATION status
+            Property whitefieldPending = propertyRepository.save(new Property(
+                    "Tech Park Residency",
+                    "Apartment",
+                    "Plot 456, Whitefield Road",
+                    "Whitefield",
+                    "Bengaluru",
+                    "Karnataka",
+                    "560066",
+                    "Modern tech hub location, well-maintained complex.",
+                    fernandez,
+                    LocalDate.of(2024, 1, 20),
+                    karan
+            ));
+            whitefieldPending.setMonthlyRent(java.math.BigDecimal.valueOf(28000));
+            whitefieldPending.setDepositAmount(java.math.BigDecimal.valueOf(56000));
+            whitefieldPending.setPropertyConditionOnEntry(PropertyCondition.EXCELLENT);
+            whitefieldPending.setFurnishingType(FurnishingType.FULLY_FURNISHED);
+            whitefieldPending.setOccupancyType(OccupancyType.SHARED);
+            whitefieldPending.setAmenities("WiFi,Parking,Gym,Pool,Furnished,Co-working,Security");
+            whitefieldPending.setStatus(PropertyStatus.PENDING_VERIFICATION);
+            propertyRepository.save(whitefieldPending);
+
+            // Property with ACTIVE status and complete lifecycle data
+            Property marathahalliActive = propertyRepository.save(new Property(
+                    "Silk Valley Apartments",
+                    "Apartment",
+                    "123 Marathahalli Main",
+                    "Marathahalli",
+                    "Bengaluru",
+                    "Karnataka",
+                    "560037",
+                    "Spacious units, metro proximity, multiple dining options nearby.",
+                    patel,
+                    LocalDate.of(2023, 8, 5),
+                    aisha
+            ));
+            marathahalliActive.setMonthlyRent(java.math.BigDecimal.valueOf(20000));
+            marathahalliActive.setDepositAmount(java.math.BigDecimal.valueOf(40000));
+            marathahalliActive.setPropertyConditionOnEntry(PropertyCondition.GOOD);
+            marathahalliActive.setPropertyConditionOnExit(PropertyCondition.GOOD);
+            marathahalliActive.setExitDate(LocalDate.of(2025, 7, 31));
+            marathahalliActive.setFurnishingType(FurnishingType.SEMI_FURNISHED);
+            marathahalliActive.setOccupancyType(OccupancyType.SOLO);
+            marathahalliActive.setAmenities("WiFi,Parking,Laundry,Balcony,AC");
+            marathahalliActive.setStatus(PropertyStatus.ACTIVE);
+            propertyRepository.save(marathahalliActive);
+
+            // Property with ARCHIVED status and exit data
+            Property jayanagar = propertyRepository.save(new Property(
+                    "Garden View Manor",
+                    "Apartment",
+                    "78 8th Block",
+                    "Jayanagar",
+                    "Bengaluru",
+                    "Karnataka",
+                    "560082",
+                    "Green locality, established community, convenient shopping district.",
+                    fernandez,
+                    LocalDate.of(2022, 5, 15),
+                    meera
+            ));
+            jayanagar.setMonthlyRent(java.math.BigDecimal.valueOf(18000));
+            jayanagar.setDepositAmount(java.math.BigDecimal.valueOf(36000));
+            jayanagar.setPropertyConditionOnEntry(PropertyCondition.EXCELLENT);
+            jayanagar.setPropertyConditionOnExit(PropertyCondition.FAIR);
+            jayanagar.setExitDate(LocalDate.of(2023, 11, 30));
+            jayanagar.setFurnishingType(FurnishingType.UNFURNISHED);
+            jayanagar.setOccupancyType(OccupancyType.FAMILY);
+            jayanagar.setAmenities("Parking,Community Hall,Garden,Maintenance Staff");
+            jayanagar.setStatus(PropertyStatus.ARCHIVED);
+            jayanagar.setVerifiedAt(java.time.LocalDateTime.of(2022, 5, 20, 10, 30));
+            jayanagar.setVerifiedBy(aisha);
+            propertyRepository.save(jayanagar);
 
             Review review1 = reviewRepository.save(new Review(
                     indiranagar,

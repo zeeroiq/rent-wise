@@ -32,6 +32,8 @@ public class AuthService {
 
     private final AppUserRepository appUserRepository;
     private final OtpChallengeRepository otpChallengeRepository;
+    private final OtpDeliveryService otpDeliveryService;
+    private final TotpService totpService;
     private final Environment environment;
     private final int otpLength;
     private final int otpTtlMinutes;
@@ -40,6 +42,8 @@ public class AuthService {
     public AuthService(
             AppUserRepository appUserRepository,
             OtpChallengeRepository otpChallengeRepository,
+            OtpDeliveryService otpDeliveryService,
+            TotpService totpService,
             Environment environment,
             @Value("${app.otp.length}") int otpLength,
             @Value("${app.otp.ttl-minutes}") int otpTtlMinutes,
@@ -47,6 +51,8 @@ public class AuthService {
     ) {
         this.appUserRepository = appUserRepository;
         this.otpChallengeRepository = otpChallengeRepository;
+        this.otpDeliveryService = otpDeliveryService;
+        this.totpService = totpService;
         this.environment = environment;
         this.otpLength = otpLength;
         this.otpTtlMinutes = otpTtlMinutes;
@@ -54,12 +60,18 @@ public class AuthService {
     }
 
     public OtpChallengeResponse requestOtp(OtpRequestCommand command) {
+        if (command.channel() == AuthChannel.TOTP) {
+            throw new IllegalArgumentException("Use the TOTP verification endpoint");
+        }
         String destination = command.destination().trim();
         validateDestination(command.channel(), destination);
         String code = generateOtp();
         LocalDateTime expiresAt = LocalDateTime.now().plusMinutes(otpTtlMinutes);
         OtpChallenge challenge = otpChallengeRepository.save(new OtpChallenge(command.channel(), destination, code, expiresAt));
-        log.info("DEV OTP for {} {} is {}", command.channel(), destination, code);
+        otpDeliveryService.deliver(command.channel(), destination, code);
+        if (exposeDevCode) {
+            log.info("DEV OTP for {} {} is {}", command.channel(), destination, code);
+        }
         return new OtpChallengeResponse(challenge.getId(), destination, expiresAt, exposeDevCode ? code : null);
     }
 
@@ -94,6 +106,31 @@ public class AuthService {
                             AuthProvider.OTP_MOBILE,
                             null
                     )));
+            case TELEGRAM -> appUserRepository.findByTelegramIdIgnoreCase(challenge.getDestination())
+                    .orElseGet(() -> {
+                        AppUser newUser = new AppUser(
+                                resolveDisplayName(command.displayName(), challenge.getDestination()),
+                                null,
+                                null,
+                                AuthProvider.OTP_TELEGRAM,
+                                null
+                        );
+                        newUser.setTelegramId(challenge.getDestination());
+                        return appUserRepository.save(newUser);
+                    });
+            case SIGNAL -> appUserRepository.findBySignalNumber(challenge.getDestination())
+                    .orElseGet(() -> {
+                        AppUser newUser = new AppUser(
+                                resolveDisplayName(command.displayName(), challenge.getDestination()),
+                                null,
+                                null,
+                                AuthProvider.OTP_SIGNAL,
+                                null
+                        );
+                        newUser.setSignalNumber(challenge.getDestination());
+                        return appUserRepository.save(newUser);
+                    });
+            case TOTP -> throw new IllegalStateException("Use the TOTP verification endpoint");
         };
 
         challenge.markConsumed(now);
@@ -110,6 +147,55 @@ public class AuthService {
             return new AuthSessionResponse(null, configuredProviders(), exposeDevCode);
         }
         return buildSessionResponse(user);
+    }
+
+    public TotpEnrollmentResponse createTotpEnrollment(Authentication authentication) {
+        AppUser user = requireAuthenticatedUser(authentication);
+        String secret = totpService.generateSecret();
+        user.setTotpSecret(secret);
+        user.setTotpEnabled(false);
+        appUserRepository.save(user);
+        String accountName = totpAccountName(user);
+        return new TotpEnrollmentResponse(
+                totpService.issuer(),
+                accountName,
+                secret,
+                totpService.buildOtpAuthUri(accountName, secret),
+                false
+        );
+    }
+
+    public AuthSessionResponse activateTotp(TotpActivateCommand command, Authentication authentication) {
+        AppUser user = requireAuthenticatedUser(authentication);
+        if (!StringUtils.hasText(user.getTotpSecret())) {
+            throw new IllegalArgumentException("Generate a TOTP secret first");
+        }
+        if (!totpService.verify(user.getTotpSecret(), command.code())) {
+            throw new IllegalArgumentException("TOTP code does not match");
+        }
+        user.setTotpEnabled(true);
+        appUserRepository.save(user);
+        return buildSessionResponse(user);
+    }
+
+    public AuthSessionResponse verifyTotpLogin(TotpLoginCommand command, HttpServletRequest request) {
+        AppUser user = findUserByIdentifier(command.identifier())
+                .orElseThrow(() -> new IllegalArgumentException("Account not found"));
+        if (!user.isTotpEnabled() || !StringUtils.hasText(user.getTotpSecret())) {
+            throw new IllegalArgumentException("TOTP is not enabled for this account");
+        }
+        if (!totpService.verify(user.getTotpSecret(), command.code())) {
+            throw new IllegalArgumentException("TOTP code does not match");
+        }
+        authenticate(request, user);
+        return buildSessionResponse(user);
+    }
+
+    public void disableTotp(Authentication authentication) {
+        AppUser user = requireAuthenticatedUser(authentication);
+        user.setTotpSecret(null);
+        user.setTotpEnabled(false);
+        appUserRepository.save(user);
     }
 
     public void logout(HttpServletRequest request) {
@@ -159,7 +245,15 @@ public class AuthService {
     }
 
     private SessionUserDto toSessionUser(AppUser user) {
-        return new SessionUserDto(user.getId(), user.getDisplayName(), user.getEmail(), user.getMobileNumber(), user.getAvatarUrl());
+        return new SessionUserDto(
+                user.getId(),
+                user.getDisplayName(),
+                user.getEmail(),
+                user.getMobileNumber(),
+                user.getAvatarUrl(),
+                user.isAdmin(),
+                user.isTotpEnabled()
+        );
     }
 
     private List<String> configuredProviders() {
@@ -190,6 +284,49 @@ public class AuthService {
             return seed.substring(0, seed.indexOf('@'));
         }
         return "tenant-" + seed.substring(Math.max(0, seed.length() - 4));
+    }
+
+    private String totpAccountName(AppUser user) {
+        if (StringUtils.hasText(user.getEmail())) {
+            return user.getEmail();
+        }
+        if (StringUtils.hasText(user.getMobileNumber())) {
+            return user.getMobileNumber();
+        }
+        if (StringUtils.hasText(user.getTelegramId())) {
+            return user.getTelegramId();
+        }
+        if (StringUtils.hasText(user.getSignalNumber())) {
+            return user.getSignalNumber();
+        }
+        return user.getDisplayName();
+    }
+
+    private AppUser requireAuthenticatedUser(Authentication authentication) {
+        RentwisePrincipal principal = currentPrincipal(authentication);
+        if (principal == null) {
+            throw new IllegalArgumentException("Authentication required");
+        }
+        return appUserRepository.findById(principal.userId())
+                .orElseThrow(() -> new IllegalArgumentException("User not found"));
+    }
+
+    private RentwisePrincipal currentPrincipal(Authentication authentication) {
+        if (authentication == null || !(authentication.getPrincipal() instanceof RentwisePrincipal principal)) {
+            return null;
+        }
+        return principal;
+    }
+
+    private java.util.Optional<AppUser> findUserByIdentifier(String identifier) {
+        String value = trim(identifier);
+        if (!StringUtils.hasText(value)) {
+            return java.util.Optional.empty();
+        }
+        return appUserRepository.findByEmailIgnoreCase(value)
+                .or(() -> appUserRepository.findByMobileNumber(value))
+                .or(() -> appUserRepository.findByTelegramIdIgnoreCase(value))
+                .or(() -> appUserRepository.findBySignalNumber(value));
     }
 
     private String generateOtp() {

@@ -65,6 +65,19 @@ jobs:
       DEPLOY_DOMAIN: ${{ secrets.DEPLOY_DOMAIN }}
       GOOGLE_CLIENT_ID: ${{ secrets.GOOGLE_CLIENT_ID }}
       GOOGLE_CLIENT_SECRET: ${{ secrets.GOOGLE_CLIENT_SECRET }}
+      SPRING_MAIL_HOST: ${{ secrets.SPRING_MAIL_HOST }}
+      SPRING_MAIL_PORT: ${{ secrets.SPRING_MAIL_PORT }}
+      SPRING_MAIL_USERNAME: ${{ secrets.SPRING_MAIL_USERNAME }}
+      SPRING_MAIL_PASSWORD: ${{ secrets.SPRING_MAIL_PASSWORD }}
+      APP_MAIL_FROM: ${{ secrets.APP_MAIL_FROM }}
+      APP_TOTP_ISSUER: ${{ secrets.APP_TOTP_ISSUER }}
+      TWILIO_ACCOUNT_SID: ${{ secrets.TWILIO_ACCOUNT_SID }}
+      TWILIO_AUTH_TOKEN: ${{ secrets.TWILIO_AUTH_TOKEN }}
+      TWILIO_FROM_NUMBER: ${{ secrets.TWILIO_FROM_NUMBER }}
+      TELEGRAM_BOT_TOKEN: ${{ secrets.TELEGRAM_BOT_TOKEN }}
+      SIGNAL_ACCOUNT: ${{ secrets.SIGNAL_ACCOUNT }}
+      SIGNAL_CLI_PATH: ${{ secrets.SIGNAL_CLI_PATH }}
+      SIGNAL_CLI_VERSION: ${{ secrets.SIGNAL_CLI_VERSION }}
     steps:
       - name: Check out repository
         uses: actions/checkout@v4
@@ -137,7 +150,7 @@ jobs:
           set -Eeuo pipefail
           trap 'status=$?; echo "::error::Remote restart failed on line ${LINENO}: ${BASH_COMMAND}"; exit ${status}' ERR
           ssh -i $SSH_KEY_FILE -o ConnectTimeout=10 "${DEPLOY_USER}@${DEPLOY_HOST}" \
-            "chmod +x /tmp/deploy.sh && APP_NAME=rent-wise DEPLOY_DIR='${REMOTE_DEPLOY_DIR}' DOMAIN='${DEPLOY_DOMAIN}' GOOGLE_CLIENT_ID='${GOOGLE_CLIENT_ID}' GOOGLE_CLIENT_SECRET='${GOOGLE_CLIENT_SECRET}' JAR_SOURCE=/tmp/rent-wise.jar /tmp/deploy.sh" \
+            "chmod +x /tmp/deploy.sh && APP_NAME=rent-wise DEPLOY_DIR='${REMOTE_DEPLOY_DIR}' DOMAIN='${DEPLOY_DOMAIN}' GOOGLE_CLIENT_ID='${GOOGLE_CLIENT_ID}' GOOGLE_CLIENT_SECRET='${GOOGLE_CLIENT_SECRET}' SPRING_MAIL_HOST='${SPRING_MAIL_HOST}' SPRING_MAIL_PORT='${SPRING_MAIL_PORT}' SPRING_MAIL_USERNAME='${SPRING_MAIL_USERNAME}' SPRING_MAIL_PASSWORD='${SPRING_MAIL_PASSWORD}' APP_MAIL_FROM='${APP_MAIL_FROM}' APP_TOTP_ISSUER='${APP_TOTP_ISSUER}' TWILIO_ACCOUNT_SID='${TWILIO_ACCOUNT_SID}' TWILIO_AUTH_TOKEN='${TWILIO_AUTH_TOKEN}' TWILIO_FROM_NUMBER='${TWILIO_FROM_NUMBER}' TELEGRAM_BOT_TOKEN='${TELEGRAM_BOT_TOKEN}' SIGNAL_ACCOUNT='${SIGNAL_ACCOUNT}' SIGNAL_CLI_PATH='${SIGNAL_CLI_PATH}' SIGNAL_CLI_VERSION='${SIGNAL_CLI_VERSION}' JAR_SOURCE=/tmp/rent-wise.jar /tmp/deploy.sh" \
             2>&1 | tee "${DEPLOY_DEBUG_DIR}/remote-deploy.log"
 
       - name: Collect remote logs on failure

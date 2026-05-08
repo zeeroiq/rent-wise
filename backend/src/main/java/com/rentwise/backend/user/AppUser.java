@@ -27,11 +27,26 @@ public class AppUser {
     @Column(unique = true)
     private String mobileNumber;
 
+    @Column(unique = true)
+    private String telegramId;
+
+    @Column(unique = true)
+    private String signalNumber;
+
     @Enumerated(EnumType.STRING)
     @Column(nullable = false)
     private AuthProvider authProvider;
 
     private String avatarUrl;
+
+    @Column(length = 128)
+    private String totpSecret;
+
+    @Column(nullable = false, columnDefinition = "boolean default false")
+    private boolean totpEnabled = false;
+
+    @Column(nullable = false, columnDefinition = "boolean default false")
+    private boolean isAdmin = false;
 
     @Column(nullable = false)
     private LocalDateTime createdAt = LocalDateTime.now();
@@ -45,6 +60,16 @@ public class AppUser {
         this.mobileNumber = mobileNumber;
         this.authProvider = authProvider;
         this.avatarUrl = avatarUrl;
+        this.isAdmin = false;
+    }
+
+    public AppUser(String displayName, String email, String mobileNumber, AuthProvider authProvider, String avatarUrl, boolean isAdmin) {
+        this.displayName = displayName;
+        this.email = email;
+        this.mobileNumber = mobileNumber;
+        this.authProvider = authProvider;
+        this.avatarUrl = avatarUrl;
+        this.isAdmin = isAdmin;
     }
 
     public Long getId() {
@@ -75,6 +100,22 @@ public class AppUser {
         this.mobileNumber = mobileNumber;
     }
 
+    public String getTelegramId() {
+        return telegramId;
+    }
+
+    public void setTelegramId(String telegramId) {
+        this.telegramId = telegramId;
+    }
+
+    public String getSignalNumber() {
+        return signalNumber;
+    }
+
+    public void setSignalNumber(String signalNumber) {
+        this.signalNumber = signalNumber;
+    }
+
     public AuthProvider getAuthProvider() {
         return authProvider;
     }
@@ -91,7 +132,31 @@ public class AppUser {
         this.avatarUrl = avatarUrl;
     }
 
+    public String getTotpSecret() {
+        return totpSecret;
+    }
+
+    public void setTotpSecret(String totpSecret) {
+        this.totpSecret = totpSecret;
+    }
+
+    public boolean isTotpEnabled() {
+        return totpEnabled;
+    }
+
+    public void setTotpEnabled(boolean totpEnabled) {
+        this.totpEnabled = totpEnabled;
+    }
+
     public LocalDateTime getCreatedAt() {
         return createdAt;
+    }
+
+    public boolean isAdmin() {
+        return isAdmin;
+    }
+
+    public void setAdmin(boolean admin) {
+        isAdmin = admin;
     }
 }

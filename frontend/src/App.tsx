@@ -1,14 +1,32 @@
-import { startTransition, type FormEvent, useEffect, useMemo, useState } from 'react'
+import { startTransition, type FormEvent, useEffect, useMemo, useRef, useState } from 'react'
 import { api } from './api'
+import { AdminPanel } from './AdminPanel'
+import {
+  Button,
+  Dialog,
+  DialogContent,
+  DialogDescription,
+  DialogHeader,
+  DialogTitle,
+  Input,
+  Textarea,
+  SegmentedControl,
+} from '@/components/common'
+import { ThemeMenu } from '@/components/layout'
 import type {
   AuthChannel,
   AuthSession,
+  CreatePropertyPayload,
+  FurnishingType,
+  OccupancyType,
+  PropertyCondition,
   OtpChallenge,
   PropertyCard,
   PropertyDetail,
   ReviewComment,
   ReviewDraft,
   ReviewVoteType,
+  TotpEnrollment,
 } from './types'
 
 const initialReviewDraft: ReviewDraft = {
@@ -35,16 +53,40 @@ type ReplyState = {
   parentLabel: string | null
 }
 
+const initialPropertyDraft: CreatePropertyPayload = {
+  title: '',
+  propertyType: '',
+  addressLine1: '',
+  locality: '',
+  city: '',
+  state: '',
+  postalCode: '',
+  highlights: '',
+  landlordName: '',
+  landlordEmail: '',
+  landlordPhoneNumber: '',
+  landlordManagementStyle: '',
+  onboardingDate: '',
+  exitDate: '',
+  amenities: '',
+}
+const DEFAULT_COUNTRY = 'India'
+
 function App() {
   const [session, setSession] = useState<AuthSession | null>(null)
+  const [sessionLoaded, setSessionLoaded] = useState(false)
+  const [loginOpen, setLoginOpen] = useState(false)
+  const initialLoginDecision = useRef(false)
   const [authChannel, setAuthChannel] = useState<AuthChannel>('EMAIL')
   const [displayName, setDisplayName] = useState('')
   const [destination, setDestination] = useState('')
   const [otpChallenge, setOtpChallenge] = useState<OtpChallenge | null>(null)
   const [otpCode, setOtpCode] = useState('')
   const [states, setStates] = useState<string[]>([])
+  const [countries, setCountries] = useState<string[]>([])
   const [cities, setCities] = useState<string[]>([])
   const [localities, setLocalities] = useState<string[]>([])
+  const [selectedCountry, setSelectedCountry] = useState(DEFAULT_COUNTRY)
   const [selectedState, setSelectedState] = useState('')
   const [selectedCity, setSelectedCity] = useState('')
   const [selectedLocality, setSelectedLocality] = useState('')
@@ -57,6 +99,18 @@ function App() {
   const [status, setStatus] = useState<string | null>(null)
   const [loadingSearch, setLoadingSearch] = useState(false)
   const [loadingDetail, setLoadingDetail] = useState(false)
+  const [showAdminPanel, setShowAdminPanel] = useState(false)
+  const [securityOpen, setSecurityOpen] = useState(false)
+  const [propertyDialogOpen, setPropertyDialogOpen] = useState(false)
+  const [submittingProperty, setSubmittingProperty] = useState(false)
+  const [propertyDraft, setPropertyDraft] =
+    useState<CreatePropertyPayload>(initialPropertyDraft)
+  const [propertyCountry, setPropertyCountry] = useState(DEFAULT_COUNTRY)
+  const [propertyStates, setPropertyStates] = useState<string[]>([])
+  const [propertyCities, setPropertyCities] = useState<string[]>([])
+  const [propertyLocalities, setPropertyLocalities] = useState<string[]>([])
+  const [totpEnrollment, setTotpEnrollment] = useState<TotpEnrollment | null>(null)
+  const [totpEnrollmentCode, setTotpEnrollmentCode] = useState('')
 
   const oauthProviders = session?.oauthProviders ?? []
   const selectedProperty = useMemo(
@@ -76,9 +130,10 @@ function App() {
 
     void (async () => {
       try {
-        const [sessionData, statesData, propertiesData] = await Promise.all([
+        const [sessionData, countriesData, statesData, propertiesData] = await Promise.all([
           api.getSession(),
-          api.fetchStates(),
+          api.fetchCountries(),
+          api.fetchStatesByCountry(DEFAULT_COUNTRY),
           api.searchProperties({}),
         ])
 
@@ -89,7 +144,15 @@ function App() {
         }
 
         setSession(sessionData)
+        setSessionLoaded(true)
+        if (!initialLoginDecision.current) {
+          setLoginOpen(!sessionData.user)
+          initialLoginDecision.current = true
+        }
+        setCountries(countriesData)
+        setSelectedCountry(DEFAULT_COUNTRY)
         setStates(statesData)
+        setPropertyCountry(DEFAULT_COUNTRY)
         startTransition(() => {
           setProperties(propertiesData)
           setSelectedPropertyId(propertiesData[0]?.id ?? null)
@@ -100,6 +163,11 @@ function App() {
       } catch (caughtError) {
         if (!cancelled) {
           reportError(caughtError)
+          setSessionLoaded(true)
+          if (!initialLoginDecision.current) {
+            setLoginOpen(true)
+            initialLoginDecision.current = true
+          }
         }
       }
     })()
@@ -110,18 +178,28 @@ function App() {
   }, [])
 
   useEffect(() => {
+    void api
+      .fetchStatesByCountry(selectedCountry)
+      .then((items) => {
+        setStates(items)
+        setSelectedState((current) => (items.includes(current) ? current : ''))
+      })
+      .catch(reportError)
+  }, [selectedCountry])
+
+  useEffect(() => {
     if (!selectedState) {
       return
     }
 
     void api
-      .fetchCities(selectedState)
+      .fetchCities(selectedCountry, selectedState)
       .then((items) => {
         setCities(items)
         setSelectedCity((current) => (items.includes(current) ? current : ''))
       })
       .catch(reportError)
-  }, [selectedState])
+  }, [selectedCountry, selectedState])
 
   useEffect(() => {
     if (!selectedState || !selectedCity) {
@@ -138,11 +216,85 @@ function App() {
   }, [selectedState, selectedCity])
 
   useEffect(() => {
-    if (selectedPropertyId == null) {
+    if (!propertyCountry) {
+      // eslint-disable-next-line react-hooks/set-state-in-effect
+      setPropertyStates([])
       return
     }
+    const loadStates = async () => {
+      try {
+        const items = await api.fetchStatesByCountry(propertyCountry)
+        setPropertyStates(items)
+        if (propertyDraft.state && !items.includes(propertyDraft.state)) {
+          updatePropertyDraft('state', '')
+        }
+      } catch (error) {
+        reportError(error)
+      }
+    }
+    void loadStates()
+  }, [propertyCountry, propertyDraft.state])
 
-    let cancelled = false
+  useEffect(() => {
+    if (!propertyDraft.state) {
+      // eslint-disable-next-line react-hooks/set-state-in-effect
+      setPropertyCities([])
+      if (propertyDraft.city) {
+        updatePropertyDraft('city', '')
+      }
+      if (propertyDraft.locality) {
+        updatePropertyDraft('locality', '')
+      }
+      return
+    }
+    const loadCities = async () => {
+      try {
+        const items = await api.fetchCities(propertyCountry, propertyDraft.state)
+        setPropertyCities(items)
+        if (!items.includes(propertyDraft.city)) {
+          if (propertyDraft.city) {
+            updatePropertyDraft('city', '')
+          }
+          if (propertyDraft.locality) {
+            updatePropertyDraft('locality', '')
+          }
+        }
+      } catch (error) {
+        reportError(error)
+      }
+    }
+    void loadCities()
+  }, [propertyCountry, propertyDraft.state, propertyDraft.city, propertyDraft.locality])
+
+  useEffect(() => {
+    if (!propertyDraft.state || !propertyDraft.city) {
+      // eslint-disable-next-line react-hooks/set-state-in-effect
+      setPropertyLocalities([])
+      if (propertyDraft.locality) {
+        updatePropertyDraft('locality', '')
+      }
+      return
+    }
+    const loadLocalities = async () => {
+      try {
+        const items = await api.fetchLocalities(propertyDraft.state, propertyDraft.city)
+        setPropertyLocalities(items)
+        if (propertyDraft.locality && !items.includes(propertyDraft.locality)) {
+           updatePropertyDraft('locality', '')
+         }
+       } catch (error) {
+         reportError(error)
+       }
+     }
+     void loadLocalities()
+   }, [propertyCountry, propertyDraft.state, propertyDraft.city, propertyDraft.locality])
+
+   useEffect(() => {
+     if (selectedPropertyId == null) {
+       return
+     }
+
+     let cancelled = false
 
     void (async () => {
       setLoadingDetail(true)
@@ -227,6 +379,7 @@ function App() {
       setOtpCode('')
       setDestination('')
       setStatus('Signed in')
+      setLoginOpen(false)
       if (selectedPropertyId != null) {
         const detail = await api.fetchPropertyDetail(selectedPropertyId)
         startTransition(() => setPropertyDetail(detail))
@@ -236,12 +389,86 @@ function App() {
     }
   }
 
+  async function handleTotpLogin() {
+    setError(null)
+    setStatus(null)
+    try {
+      const sessionData = await api.verifyTotp({
+        identifier: destination,
+        code: otpCode,
+      })
+      setSession(sessionData)
+      setOtpCode('')
+      setDestination('')
+      setStatus('Signed in with TOTP')
+      setLoginOpen(false)
+    } catch (caughtError) {
+      reportError(caughtError)
+    }
+  }
+
+  async function handleAuthSubmit() {
+    if (authChannel === 'TOTP') {
+      await handleTotpLogin()
+      return
+    }
+    await handleRequestOtp()
+  }
+
   async function handleLogout() {
     try {
       await api.logout()
       setSession((current) => (current ? { ...current, user: null } : current))
       setOtpChallenge(null)
+      setSecurityOpen(false)
+      setTotpEnrollment(null)
+      setTotpEnrollmentCode('')
       setStatus('Signed out')
+    } catch (caughtError) {
+      reportError(caughtError)
+    }
+  }
+
+  async function handleStartTotpEnrollment() {
+    setError(null)
+    setStatus(null)
+    try {
+      const enrollment = await api.startTotpEnrollment()
+      setTotpEnrollment(enrollment)
+      setTotpEnrollmentCode('')
+      setStatus('TOTP secret generated')
+    } catch (caughtError) {
+      reportError(caughtError)
+    }
+  }
+
+  async function handleActivateTotp() {
+    if (!totpEnrollment) return
+    try {
+      const sessionData = await api.activateTotp({ code: totpEnrollmentCode })
+      setSession(sessionData)
+      setTotpEnrollmentCode('')
+      setSecurityOpen(false)
+      setStatus('TOTP enabled')
+    } catch (caughtError) {
+      reportError(caughtError)
+    }
+  }
+
+  async function handleDisableTotp() {
+    try {
+      await api.disableTotp()
+      setSession((current) =>
+        current
+          ? {
+              ...current,
+              user: current.user ? { ...current.user, totpEnabled: false } : null,
+            }
+          : current,
+      )
+      setTotpEnrollment(null)
+      setTotpEnrollmentCode('')
+      setStatus('TOTP disabled')
     } catch (caughtError) {
       reportError(caughtError)
     }
@@ -326,10 +553,34 @@ function App() {
     setLocalities([])
   }
 
+  function handleCountryChange(value: string) {
+    setSelectedCountry(value)
+    setSelectedState('')
+    setSelectedCity('')
+    setSelectedLocality('')
+    setStates([])
+    setCities([])
+    setLocalities([])
+  }
+
   function handleCityChange(value: string) {
     setSelectedCity(value)
     setSelectedLocality('')
     setLocalities([])
+  }
+
+  function openPropertyDialog() {
+    setPropertyCountry(selectedCountry || DEFAULT_COUNTRY)
+    setPropertyDialogOpen(true)
+  }
+
+  function handlePropertyCountryChange(value: string) {
+    setPropertyCountry(value)
+    updatePropertyDraft('state', '')
+    updatePropertyDraft('city', '')
+    updatePropertyDraft('locality', '')
+    setPropertyCities([])
+    setPropertyLocalities([])
   }
 
   function updateReviewDraft<K extends keyof ReviewDraft>(
@@ -339,159 +590,557 @@ function App() {
     setReviewDraft((current) => ({ ...current, [key]: value }))
   }
 
+  function updatePropertyDraft<K extends keyof CreatePropertyPayload>(
+    key: K,
+    value: CreatePropertyPayload[K],
+  ) {
+    setPropertyDraft((current) => ({ ...current, [key]: value }))
+  }
+
+  async function handleCreateProperty(event: FormEvent<HTMLFormElement>) {
+    event.preventDefault()
+    if (!session?.user) {
+      setLoginOpen(true)
+      return
+    }
+    setSubmittingProperty(true)
+    setError(null)
+    setStatus(null)
+    try {
+      const payload: CreatePropertyPayload = {
+        ...propertyDraft,
+        postalCode: propertyDraft.postalCode?.trim() || undefined,
+        highlights: propertyDraft.highlights?.trim() || undefined,
+        landlordEmail: propertyDraft.landlordEmail?.trim() || undefined,
+        landlordPhoneNumber: propertyDraft.landlordPhoneNumber?.trim() || undefined,
+        landlordManagementStyle: propertyDraft.landlordManagementStyle?.trim() || undefined,
+        exitDate: propertyDraft.exitDate?.trim() || undefined,
+        amenities: propertyDraft.amenities?.trim() || undefined,
+      }
+      await api.createProperty(payload)
+      setPropertyDraft(initialPropertyDraft)
+      setPropertyCountry(selectedCountry || DEFAULT_COUNTRY)
+      setPropertyCities([])
+      setPropertyLocalities([])
+      setPropertyDialogOpen(false)
+      setStatus('Property submitted for verification')
+      await handleSearch()
+      const statesData = await api.fetchStatesByCountry(DEFAULT_COUNTRY)
+      setStates(statesData)
+    } catch (caughtError) {
+      reportError(caughtError)
+    } finally {
+      setSubmittingProperty(false)
+    }
+  }
+
+  const nativeSelectClassName =
+    'flex h-10 w-full appearance-none rounded-md border border-input bg-background px-3 py-2 text-sm text-foreground ring-offset-background focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 disabled:cursor-not-allowed disabled:opacity-50'
+
   return (
-    <div className="app-shell">
-      <header className="topbar">
-        <div>
-          <p className="eyebrow">Tenant intelligence platform</p>
-          <h1>RentWise</h1>
+    <div className='min-h-screen bg-background text-foreground'>
+      <div className='mx-auto flex min-h-screen max-w-7xl flex-col gap-6 px-4 py-6 sm:px-6 lg:px-8'>
+      <header className='flex flex-col gap-4 rounded-xl border border-border bg-card/80 p-5 shadow-sm backdrop-blur supports-[backdrop-filter]:bg-card/60 sm:flex-row sm:items-end sm:justify-between'>
+        <div className='space-y-1'>
+          <p className='text-xs font-semibold uppercase tracking-wider text-muted-foreground'>
+            Tenant intelligence platform
+          </p>
+          <h1 className='text-3xl font-semibold tracking-tight'>RentWise</h1>
         </div>
-        <div className="status-strip">
-          <div className="status-item">
-            <span className="status-label">Backend</span>
-            <code>{api.backendBaseUrl}</code>
-          </div>
+        <div className='flex w-full flex-col gap-3 sm:w-auto sm:flex-row sm:items-stretch'>
+          {import.meta.env.DEV ? (
+            <div className='min-w-0 rounded-lg border border-input bg-background/60 p-3'>
+              <p className='text-xs font-medium text-muted-foreground'>Backend</p>
+              <code className='block max-w-full truncate text-xs'>{api.backendBaseUrl}</code>
+            </div>
+          ) : null}
           {session?.user ? (
-            <div className="session-badge">
-              <strong>{session.user.displayName}</strong>
-              <span>{session.user.email ?? session.user.mobileNumber}</span>
-              <button type="button" className="ghost-button" onClick={handleLogout}>
+            <div className='flex flex-wrap items-center justify-between gap-3 rounded-lg border border-input bg-background/60 p-3 sm:min-w-[320px] sm:flex-nowrap sm:justify-start'>
+              <div className='min-w-0'>
+                <p className='truncate text-sm font-semibold'>{session.user.displayName}</p>
+                <p className='truncate text-xs text-muted-foreground'>
+                  {session.user.email ?? session.user.mobileNumber}
+                </p>
+              </div>
+              <ThemeMenu />
+              {session.user.isAdmin && (
+                <Button
+                  type='button'
+                  variant={showAdminPanel ? 'default' : 'outline'}
+                  size='sm'
+                  onClick={() => setShowAdminPanel(!showAdminPanel)}
+                >
+                  Admin
+                </Button>
+              )}
+              <Button
+                type='button'
+                variant='outline'
+                size='sm'
+                onClick={() => setSecurityOpen(true)}
+              >
+                Security
+              </Button>
+              <Button type='button' variant='ghost' size='sm' onClick={handleLogout}>
                 Sign out
-              </button>
+              </Button>
             </div>
           ) : (
-            <div className="session-badge">
-              <strong>Read mode</strong>
-              <span>Sign in to submit reviews and vote</span>
+            <div className='flex flex-wrap items-center justify-between gap-3 rounded-lg border border-input bg-background/60 p-3 sm:min-w-[320px] sm:flex-nowrap'>
+              <div className='min-w-0'>
+                <p className='truncate text-sm font-semibold'>Read mode</p>
+                <p className='truncate text-xs text-muted-foreground'>
+                  Sign in to submit reviews and vote
+                </p>
+              </div>
+              <ThemeMenu />
+              <Button
+                type='button'
+                variant='outline'
+                size='sm'
+                onClick={() => setLoginOpen(true)}
+                disabled={!sessionLoaded}
+              >
+                Sign in
+              </Button>
             </div>
           )}
         </div>
       </header>
 
-      <main className="workspace">
-        <aside className="left-rail">
-          <section className="panel">
-            <div className="section-head">
-              <h2>Access</h2>
-              <span>{session?.user ? 'Active' : 'Guest'}</span>
+      <Dialog open={loginOpen} onOpenChange={setLoginOpen}>
+        <DialogContent className='sm:max-w-xl'>
+          <DialogHeader>
+            <DialogTitle>Sign in</DialogTitle>
+            <DialogDescription>
+              Use OTP or OAuth. You can close this dialog to continue in read mode.
+            </DialogDescription>
+          </DialogHeader>
+
+          <div className='space-y-4'>
+            <SegmentedControl
+              aria-label='Auth channel'
+              options={[
+                { value: 'EMAIL', label: 'Email OTP' },
+                { value: 'MOBILE', label: 'Mobile OTP' },
+                { value: 'TELEGRAM', label: 'Telegram Bot' },
+                { value: 'SIGNAL', label: 'Signal Bot' },
+                { value: 'TOTP', label: 'Authenticator App' },
+              ]}
+              value={authChannel}
+              onChange={setAuthChannel}
+            />
+
+            <div className='grid gap-3 sm:grid-cols-2'>
+              <label className='space-y-1'>
+                <span className='text-xs font-medium text-muted-foreground'>Name</span>
+                <Input
+                  value={displayName}
+                  onChange={(event) => setDisplayName(event.target.value)}
+                  placeholder='Your display name'
+                />
+              </label>
+
+              <label className='space-y-1'>
+                <span className='text-xs font-medium text-muted-foreground'>
+                  {authChannel === 'EMAIL'
+                    ? 'Email'
+                    : authChannel === 'MOBILE'
+                      ? 'Mobile'
+                      : authChannel === 'TELEGRAM'
+                        ? 'Telegram chat ID'
+                        : authChannel === 'SIGNAL'
+                          ? 'Signal number'
+                          : 'Email or mobile'}
+                </span>
+                <Input
+                  value={destination}
+                  onChange={(event) => setDestination(event.target.value)}
+                  placeholder={
+                    authChannel === 'EMAIL'
+                      ? 'tenant@example.com'
+                      : authChannel === 'MOBILE'
+                        ? '+1 555 000 1001'
+                        : authChannel === 'TELEGRAM'
+                          ? '123456789'
+                          : authChannel === 'SIGNAL'
+                            ? '+91 98765 43210'
+                            : 'tenant@example.com'
+                  }
+                />
+              </label>
             </div>
 
-            {!session?.user ? (
-              <>
-                <div className="segmented-control" role="tablist" aria-label="Auth channel">
-                  {(['EMAIL', 'MOBILE'] as AuthChannel[]).map((channel) => (
-                    <button
-                      key={channel}
-                      type="button"
-                      className={authChannel === channel ? 'segment active' : 'segment'}
-                      onClick={() => setAuthChannel(channel)}
-                    >
-                      {channel === 'EMAIL' ? 'Email OTP' : 'Mobile OTP'}
-                    </button>
-                  ))}
-                </div>
+            <div className='grid grid-cols-2 gap-3'>
+              <Button type='button' onClick={handleAuthSubmit}>
+                {authChannel === 'TOTP' ? 'Verify TOTP' : 'Request OTP'}
+              </Button>
+              <Button
+                type='button'
+                variant='outline'
+                onClick={() => {
+                  setDestination('')
+                  setOtpChallenge(null)
+                  setOtpCode('')
+                }}
+              >
+                Reset
+              </Button>
+            </div>
 
-                <label>
-                  <span>Name</span>
-                  <input
-                    value={displayName}
-                    onChange={(event) => setDisplayName(event.target.value)}
-                    placeholder="Your display name"
+            {authChannel === 'TOTP' ? (
+              <div className='space-y-3 rounded-lg border border-input bg-card p-4'>
+                <p className='text-xs text-muted-foreground'>
+                  Use FreeOTP, 2FAS, or another authenticator app. Enter the code currently shown
+                  in your app.
+                </p>
+                <label className='space-y-1'>
+                  <span className='text-xs font-medium text-muted-foreground'>TOTP code</span>
+                  <Input
+                    value={otpCode}
+                    onChange={(event) => setOtpCode(event.target.value)}
+                    placeholder='123456'
                   />
                 </label>
-
-                <label>
-                  <span>{authChannel === 'EMAIL' ? 'Email' : 'Mobile'}</span>
-                  <input
-                    value={destination}
-                    onChange={(event) => setDestination(event.target.value)}
-                    placeholder={
-                      authChannel === 'EMAIL'
-                        ? 'tenant@example.com'
-                        : '+1 555 000 1001'
-                    }
+              </div>
+            ) : otpChallenge ? (
+              <div className='space-y-3 rounded-lg border border-input bg-card p-4'>
+                <label className='space-y-1'>
+                  <span className='text-xs font-medium text-muted-foreground'>Enter OTP</span>
+                  <Input
+                    value={otpCode}
+                    onChange={(event) => setOtpCode(event.target.value)}
+                    placeholder='6-digit code'
                   />
                 </label>
-
-                <div className="inline-actions">
-                  <button type="button" onClick={handleRequestOtp}>
-                    Request OTP
-                  </button>
-                  <button
-                    type="button"
-                    className="ghost-button"
-                    onClick={() => {
-                      setDestination('')
-                      setOtpChallenge(null)
-                      setOtpCode('')
-                    }}
-                  >
-                    Reset
-                  </button>
-                </div>
-
-                {otpChallenge ? (
-                  <div className="otp-box">
-                    <label>
-                      <span>Enter OTP</span>
-                      <input
-                        value={otpCode}
-                        onChange={(event) => setOtpCode(event.target.value)}
-                        placeholder="6-digit code"
-                      />
-                    </label>
-                    {otpChallenge.devCode && session?.devOtpVisible !== false ? (
-                      <p className="helper-copy">
-                        Dev code: <strong>{otpChallenge.devCode}</strong>
-                      </p>
-                    ) : null}
-                    <button type="button" onClick={handleVerifyOtp}>
-                      Verify and sign in
-                    </button>
-                  </div>
+                {otpChallenge.devCode && session?.devOtpVisible !== false ? (
+                  <p className='text-xs text-muted-foreground'>
+                    Dev code: <strong>{otpChallenge.devCode}</strong>
+                  </p>
                 ) : null}
+                <Button type='button' onClick={handleVerifyOtp}>
+                  Verify and sign in
+                </Button>
+              </div>
+            ) : null}
 
-                <div className="oauth-stack">
-                  {['google', 'facebook'].map((provider) => {
-                    const enabled = oauthProviders.includes(provider)
-                    return (
-                      <a
-                        key={provider}
-                        href={enabled ? api.oauthUrl(provider) : undefined}
-                        className={enabled ? 'oauth-button' : 'oauth-button disabled'}
-                        aria-disabled={!enabled}
-                      >
-                        Continue with {provider === 'google' ? 'Google' : 'Facebook'}
-                      </a>
-                    )
-                  })}
-                  <p className="helper-copy">
-                    Configure Google or Facebook OAuth credentials on the backend to
-                    enable social sign-in.
+            <div className='space-y-2'>
+              {(['google', 'facebook'] as const).map((provider) => {
+                const enabled = oauthProviders.includes(provider)
+                const label = `Continue with ${provider === 'google' ? 'Google' : 'Facebook'}`
+                return enabled ? (
+                  <Button key={provider} asChild variant='outline' className='w-full'>
+                    <a href={api.oauthUrl(provider)}>{label}</a>
+                  </Button>
+                ) : (
+                  <Button key={provider} variant='outline' className='w-full' disabled>
+                    {label}
+                  </Button>
+                )
+              })}
+              <p className='text-xs text-muted-foreground'>
+                Configure OAuth credentials on the backend to enable social sign-in.
+              </p>
+            </div>
+          </div>
+        </DialogContent>
+      </Dialog>
+
+      <Dialog open={securityOpen} onOpenChange={setSecurityOpen}>
+        <DialogContent className='sm:max-w-2xl'>
+          <DialogHeader>
+            <DialogTitle>Security</DialogTitle>
+            <DialogDescription>
+              Manage TOTP enrollment for FreeOTP, 2FAS, or another authenticator app.
+            </DialogDescription>
+          </DialogHeader>
+
+          <div className='space-y-4'>
+            <div className='rounded-lg border border-input bg-card p-4'>
+              <p className='text-sm font-medium'>TOTP status</p>
+              <p className='text-xs text-muted-foreground'>
+                {session?.user?.totpEnabled ? 'Enabled' : 'Not enabled'}
+              </p>
+              <div className='mt-3 flex flex-wrap gap-2'>
+                {!session?.user?.totpEnabled ? (
+                  <Button type='button' onClick={handleStartTotpEnrollment}>
+                    Generate TOTP secret
+                  </Button>
+                ) : (
+                  <Button type='button' variant='outline' onClick={handleDisableTotp}>
+                    Disable TOTP
+                  </Button>
+                )}
+              </div>
+            </div>
+
+            {totpEnrollment ? (
+              <div className='space-y-3 rounded-lg border border-input bg-card p-4'>
+                <div className='space-y-1'>
+                  <p className='text-sm font-medium'>Enrollment secret</p>
+                  <p className='text-xs text-muted-foreground'>
+                    Add this account in FreeOTP or 2FAS using the secret or otpauth URI below.
                   </p>
                 </div>
-              </>
-            ) : (
-              <div className="signed-in-note">
-                <p>Signed in as {session.user.displayName}.</p>
-                <p>Reviews, replies, and votes are now enabled.</p>
+                <label className='space-y-1'>
+                  <span className='text-xs font-medium text-muted-foreground'>Secret</span>
+                  <Input value={totpEnrollment.secret} readOnly />
+                </label>
+                <label className='space-y-1'>
+                  <span className='text-xs font-medium text-muted-foreground'>otpauth URI</span>
+                  <Textarea value={totpEnrollment.otpauthUri} readOnly className='font-mono text-xs' />
+                </label>
+                <label className='space-y-1'>
+                  <span className='text-xs font-medium text-muted-foreground'>Activation code</span>
+                  <Input
+                    value={totpEnrollmentCode}
+                    onChange={(event) => setTotpEnrollmentCode(event.target.value)}
+                    placeholder='123456'
+                  />
+                </label>
+                <div className='flex flex-wrap gap-2'>
+                  <Button type='button' onClick={handleActivateTotp}>
+                    Enable TOTP
+                  </Button>
+                  <Button
+                    type='button'
+                    variant='outline'
+                    onClick={() => {
+                      setTotpEnrollment(null)
+                      setTotpEnrollmentCode('')
+                    }}
+                  >
+                    Clear
+                  </Button>
+                </div>
               </div>
-            )}
-          </section>
+            ) : null}
+          </div>
+        </DialogContent>
+      </Dialog>
 
-          <section className="panel">
-            <div className="section-head">
-              <h2>Search</h2>
-              <span>State → city → locality</span>
+      <Dialog open={propertyDialogOpen} onOpenChange={setPropertyDialogOpen}>
+        <DialogContent className='max-h-[90vh] overflow-y-auto sm:max-w-2xl'>
+          <DialogHeader>
+            <DialogTitle>Add property</DialogTitle>
+            <DialogDescription>
+              Submit missing property details. Listings are reviewed before going live.
+            </DialogDescription>
+          </DialogHeader>
+
+          <form className='space-y-3' onSubmit={handleCreateProperty}>
+            <div className='grid gap-3 sm:grid-cols-2'>
+              <label className='space-y-1'>
+                <span className='text-xs font-medium text-muted-foreground'>Title*</span>
+                <Input value={propertyDraft.title} onChange={(event) => updatePropertyDraft('title', event.target.value)} required />
+              </label>
+              <label className='space-y-1'>
+                <span className='text-xs font-medium text-muted-foreground'>Property type*</span>
+                <Input value={propertyDraft.propertyType} onChange={(event) => updatePropertyDraft('propertyType', event.target.value)} required />
+              </label>
+              <label className='space-y-1 sm:col-span-2'>
+                <span className='text-xs font-medium text-muted-foreground'>Address line 1*</span>
+                <Input value={propertyDraft.addressLine1} onChange={(event) => updatePropertyDraft('addressLine1', event.target.value)} required />
+              </label>
+              <label className='space-y-1'>
+                <span className='text-xs font-medium text-muted-foreground'>Country*</span>
+                <select
+                  className={nativeSelectClassName}
+                  value={propertyCountry}
+                  onChange={(event) => handlePropertyCountryChange(event.target.value)}
+                  required
+                >
+                  <option value=''>Select country</option>
+                  {countries.map((country) => (
+                    <option key={country} value={country}>
+                      {country}
+                    </option>
+                  ))}
+                </select>
+              </label>
+              <label className='space-y-1'>
+                <span className='text-xs font-medium text-muted-foreground'>State*</span>
+                <select
+                  className={nativeSelectClassName}
+                  value={propertyDraft.state}
+                  onChange={(event) => updatePropertyDraft('state', event.target.value)}
+                  required
+                >
+                  <option value=''>Select state in {propertyCountry || 'country'}</option>
+                  {propertyStates.map((state) => (
+                    <option key={state} value={state}>
+                      {state}
+                    </option>
+                  ))}
+                </select>
+              </label>
+              <label className='space-y-1'>
+                <span className='text-xs font-medium text-muted-foreground'>City*</span>
+                <select
+                  className={nativeSelectClassName}
+                  value={propertyDraft.city}
+                  onChange={(event) => updatePropertyDraft('city', event.target.value)}
+                  disabled={!propertyDraft.state}
+                  required
+                >
+                  <option value=''>Select city</option>
+                  {propertyCities.map((city) => (
+                    <option key={city} value={city}>
+                      {city}
+                    </option>
+                  ))}
+                </select>
+              </label>
+              <label className='space-y-1'>
+                <span className='text-xs font-medium text-muted-foreground'>Locality*</span>
+                <select
+                  className={nativeSelectClassName}
+                  value={propertyDraft.locality}
+                  onChange={(event) => updatePropertyDraft('locality', event.target.value)}
+                  disabled={!propertyDraft.city}
+                  required
+                >
+                  <option value=''>Select locality</option>
+                  {propertyLocalities.map((locality) => (
+                    <option key={locality} value={locality}>
+                      {locality}
+                    </option>
+                  ))}
+                </select>
+              </label>
+              <label className='space-y-1'>
+                <span className='text-xs font-medium text-muted-foreground'>Postal code</span>
+                <Input value={propertyDraft.postalCode ?? ''} onChange={(event) => updatePropertyDraft('postalCode', event.target.value)} />
+              </label>
+              <label className='space-y-1'>
+                <span className='text-xs font-medium text-muted-foreground'>Onboarding date*</span>
+                <Input type='date' value={propertyDraft.onboardingDate} onChange={(event) => updatePropertyDraft('onboardingDate', event.target.value)} required />
+              </label>
+              <label className='space-y-1'>
+                <span className='text-xs font-medium text-muted-foreground'>Exit date</span>
+                <Input type='date' value={propertyDraft.exitDate ?? ''} onChange={(event) => updatePropertyDraft('exitDate', event.target.value)} />
+              </label>
+              <label className='space-y-1'>
+                <span className='text-xs font-medium text-muted-foreground'>Monthly rent</span>
+                <Input type='number' value={propertyDraft.monthlyRent ?? ''} onChange={(event) => updatePropertyDraft('monthlyRent', event.target.value ? Number(event.target.value) : undefined)} />
+              </label>
+              <label className='space-y-1'>
+                <span className='text-xs font-medium text-muted-foreground'>Deposit amount</span>
+                <Input type='number' value={propertyDraft.depositAmount ?? ''} onChange={(event) => updatePropertyDraft('depositAmount', event.target.value ? Number(event.target.value) : undefined)} />
+              </label>
+              <label className='space-y-1 sm:col-span-2'>
+                <span className='text-xs font-medium text-muted-foreground'>Highlights</span>
+                <Textarea value={propertyDraft.highlights ?? ''} onChange={(event) => updatePropertyDraft('highlights', event.target.value)} />
+              </label>
+              <label className='space-y-1 sm:col-span-2'>
+                <span className='text-xs font-medium text-muted-foreground'>Amenities</span>
+                <Textarea value={propertyDraft.amenities ?? ''} onChange={(event) => updatePropertyDraft('amenities', event.target.value)} placeholder='Comma-separated values' />
+              </label>
+              <label className='space-y-1'>
+                <span className='text-xs font-medium text-muted-foreground'>Entry condition</span>
+                <select className={nativeSelectClassName} value={propertyDraft.propertyConditionOnEntry ?? ''} onChange={(event) => updatePropertyDraft('propertyConditionOnEntry', (event.target.value || undefined) as PropertyCondition | undefined)}>
+                  <option value=''>Select</option>
+                  <option value='EXCELLENT'>Excellent</option>
+                  <option value='GOOD'>Good</option>
+                  <option value='FAIR'>Fair</option>
+                  <option value='POOR'>Poor</option>
+                </select>
+              </label>
+              <label className='space-y-1'>
+                <span className='text-xs font-medium text-muted-foreground'>Exit condition</span>
+                <select className={nativeSelectClassName} value={propertyDraft.propertyConditionOnExit ?? ''} onChange={(event) => updatePropertyDraft('propertyConditionOnExit', (event.target.value || undefined) as PropertyCondition | undefined)}>
+                  <option value=''>Select</option>
+                  <option value='EXCELLENT'>Excellent</option>
+                  <option value='GOOD'>Good</option>
+                  <option value='FAIR'>Fair</option>
+                  <option value='POOR'>Poor</option>
+                </select>
+              </label>
+              <label className='space-y-1'>
+                <span className='text-xs font-medium text-muted-foreground'>Furnishing</span>
+                <select className={nativeSelectClassName} value={propertyDraft.furnishingType ?? ''} onChange={(event) => updatePropertyDraft('furnishingType', (event.target.value || undefined) as FurnishingType | undefined)}>
+                  <option value=''>Select</option>
+                  <option value='UNFURNISHED'>Unfurnished</option>
+                  <option value='SEMI_FURNISHED'>Semi furnished</option>
+                  <option value='FULLY_FURNISHED'>Fully furnished</option>
+                </select>
+              </label>
+              <label className='space-y-1'>
+                <span className='text-xs font-medium text-muted-foreground'>Occupancy</span>
+                <select className={nativeSelectClassName} value={propertyDraft.occupancyType ?? ''} onChange={(event) => updatePropertyDraft('occupancyType', (event.target.value || undefined) as OccupancyType | undefined)}>
+                  <option value=''>Select</option>
+                  <option value='SOLO'>Solo</option>
+                  <option value='SHARED'>Shared</option>
+                  <option value='FAMILY'>Family</option>
+                </select>
+              </label>
+            </div>
+
+            <div className='mt-2 rounded-lg border border-input p-3'>
+              <p className='mb-2 text-xs font-medium text-muted-foreground'>Landlord details</p>
+              <div className='grid gap-3 sm:grid-cols-2'>
+                <label className='space-y-1 sm:col-span-2'>
+                  <span className='text-xs font-medium text-muted-foreground'>Name*</span>
+                  <Input value={propertyDraft.landlordName} onChange={(event) => updatePropertyDraft('landlordName', event.target.value)} required />
+                </label>
+                <label className='space-y-1'>
+                  <span className='text-xs font-medium text-muted-foreground'>Email</span>
+                  <Input value={propertyDraft.landlordEmail ?? ''} onChange={(event) => updatePropertyDraft('landlordEmail', event.target.value)} />
+                </label>
+                <label className='space-y-1'>
+                  <span className='text-xs font-medium text-muted-foreground'>Phone</span>
+                  <Input value={propertyDraft.landlordPhoneNumber ?? ''} onChange={(event) => updatePropertyDraft('landlordPhoneNumber', event.target.value)} />
+                </label>
+                <label className='space-y-1 sm:col-span-2'>
+                  <span className='text-xs font-medium text-muted-foreground'>Management style</span>
+                  <Textarea value={propertyDraft.landlordManagementStyle ?? ''} onChange={(event) => updatePropertyDraft('landlordManagementStyle', event.target.value)} />
+                </label>
+              </div>
+            </div>
+
+            <Button type='submit' disabled={submittingProperty}>
+              {submittingProperty ? 'Submitting...' : 'Submit property'}
+            </Button>
+          </form>
+        </DialogContent>
+      </Dialog>
+
+      {showAdminPanel ? (
+        <main className='min-h-0 flex-1'>
+          <AdminPanel onError={reportError} onStatus={(msg) => setStatus(msg)} />
+        </main>
+      ) : (
+        <main className='grid min-h-0 flex-1 gap-6 lg:grid-cols-[380px_1fr]'>
+          <aside className='space-y-6'>
+          <section className='rounded-xl border border-border bg-card p-5 shadow-sm'>
+            <div className='mb-4'>
+              <h2 className='text-base font-semibold'>Search</h2>
+              <p className='text-xs text-muted-foreground'>State → city → locality</p>
             </div>
 
             <label>
-              <span>State</span>
+              <span className='text-xs font-medium text-muted-foreground'>Country</span>
+              <select
+                value={selectedCountry}
+                onChange={(event) => handleCountryChange(event.target.value)}
+                className={nativeSelectClassName}
+              >
+                {countries.map((country) => (
+                  <option key={country} value={country}>
+                    {country}
+                  </option>
+                ))}
+              </select>
+            </label>
+
+            <label>
+              <span className='text-xs font-medium text-muted-foreground'>State</span>
               <select
                 value={selectedState}
                 onChange={(event) => handleStateChange(event.target.value)}
+                className={nativeSelectClassName}
               >
-                <option value="">All states</option>
+                <option value=''>All states in {selectedCountry}</option>
                 {states.map((state) => (
                   <option key={state} value={state}>
                     {state}
@@ -501,13 +1150,14 @@ function App() {
             </label>
 
             <label>
-              <span>City</span>
+              <span className='text-xs font-medium text-muted-foreground'>City</span>
               <select
                 value={selectedCity}
                 onChange={(event) => handleCityChange(event.target.value)}
                 disabled={!selectedState}
+                className={nativeSelectClassName}
               >
-                <option value="">All cities</option>
+                <option value=''>All cities</option>
                 {cities.map((city) => (
                   <option key={city} value={city}>
                     {city}
@@ -517,13 +1167,14 @@ function App() {
             </label>
 
             <label>
-              <span>Locality</span>
+              <span className='text-xs font-medium text-muted-foreground'>Locality</span>
               <select
                 value={selectedLocality}
                 onChange={(event) => setSelectedLocality(event.target.value)}
                 disabled={!selectedCity}
+                className={nativeSelectClassName}
               >
-                <option value="">All localities</option>
+                <option value=''>All localities</option>
                 {localities.map((locality) => (
                   <option key={locality} value={locality}>
                     {locality}
@@ -532,30 +1183,43 @@ function App() {
               </select>
             </label>
 
-            <button type="button" onClick={handleSearch}>
+            <Button type='button' onClick={handleSearch} disabled={loadingSearch}>
               {loadingSearch ? 'Searching...' : 'Search properties'}
-            </button>
+            </Button>
+            <Button
+              type='button'
+              variant='outline'
+              onClick={() => {
+                if (session?.user) {
+                  openPropertyDialog()
+                } else {
+                  setLoginOpen(true)
+                }
+              }}
+            >
+              Can't find property? Add it
+            </Button>
           </section>
 
-          <section className="results-band">
-            <div className="section-head">
+          <section className='results-band'>
+            <div className='section-head'>
               <h2>Properties</h2>
               <span>{properties.length} listed</span>
             </div>
 
-            <div className="results-list">
+            <div className='results-list'>
               {properties.map((property) => (
                 <button
                   key={property.id}
-                  type="button"
+                  type='button'
                   className={
                     selectedPropertyId === property.id
-                      ? 'property-tile active'
-                      : 'property-tile'
+                      ? 'w-full rounded-xl border border-ring bg-accent/50 p-4 text-left shadow-sm transition-colors hover:bg-accent/60'
+                      : 'w-full rounded-xl border border-input bg-background p-4 text-left shadow-sm transition-colors hover:bg-accent/30'
                   }
                   onClick={() => setSelectedPropertyId(property.id)}
                 >
-                  <div className="tile-topline">
+                  <div className='tile-topline'>
                     <strong>{property.title}</strong>
                     <span>{property.scorecard.overallScore}/100</span>
                   </div>
@@ -568,57 +1232,74 @@ function App() {
               ))}
 
               {properties.length === 0 ? (
-                <div className="empty-state">No properties matched the selected area.</div>
+                <div className='empty-state'>
+                  No properties matched the selected area.
+                  <div className='mt-3'>
+                    <Button
+                      type='button'
+                      variant='outline'
+                      onClick={() => {
+                        if (session?.user) {
+                          openPropertyDialog()
+                        } else {
+                          setLoginOpen(true)
+                        }
+                      }}
+                    >
+                      Add this property
+                    </Button>
+                  </div>
+                </div>
               ) : null}
             </div>
           </section>
         </aside>
 
-        <section className="detail-band">
-          {error ? <div className="banner error">{error}</div> : null}
-          {status ? <div className="banner success">{status}</div> : null}
+        <section className='detail-band'>
+          {error ? <div className='banner error'>{error}</div> : null}
+          {status ? <div className='banner success'>{status}</div> : null}
 
           {loadingDetail ? (
-            <div className="empty-state">Loading property detail...</div>
+            <div className='empty-state'>Loading property detail...</div>
           ) : propertyDetail ? (
             <>
-              <section className="summary-strip">
+              <section className='summary-strip'>
                 <div>
-                  <p className="eyebrow">{propertyDetail.propertyType}</p>
+                  <p className='eyebrow'>{propertyDetail.propertyType}</p>
                   <h2>{propertyDetail.title}</h2>
-                  <p className="address-line">
+                  <p className='address-line'>
                     {propertyDetail.addressLine1}, {propertyDetail.locality},{' '}
                     {propertyDetail.city}, {propertyDetail.state}
                   </p>
-                  <p className="summary-copy">{propertyDetail.highlights}</p>
+                  <p className='summary-copy'>{propertyDetail.highlights}</p>
                 </div>
 
-                <div className="score-row">
-                  <div className="score-chip">
+                <div className='score-row'>
+                  <div className='score-chip'>
                     <span>Overall</span>
                     <strong>{propertyDetail.scorecard.overallScore}</strong>
                   </div>
-                  <div className="score-chip">
+                  <div className='score-chip'>
                     <span>Landlord</span>
                     <strong>{propertyDetail.scorecard.landlordScore}</strong>
                   </div>
-                  <div className="score-chip">
+                  <div className='score-chip'>
                     <span>Property</span>
                     <strong>{propertyDetail.scorecard.propertyScore}</strong>
                   </div>
-                  <div className="score-chip accent">
+                  <div className='score-chip accent'>
                     <span>Recommendation</span>
                     <strong>{propertyDetail.scorecard.recommendation}</strong>
                   </div>
                 </div>
               </section>
 
-              <section className="landlord-band">
-                <div className="section-head">
+              <section className='landlord-band'>
+                <div className='section-head'>
                   <h2>Landlord profile</h2>
                   <span>{propertyDetail.landlord.name}</span>
                 </div>
-                <div className="landlord-grid">
+                <div className='landlord-grid'>
                   <p>
                     <strong>Email:</strong> {propertyDetail.landlord.email ?? 'Not shared'}
                   </p>
@@ -626,14 +1307,14 @@ function App() {
                     <strong>Phone:</strong>{' '}
                     {propertyDetail.landlord.phoneNumber ?? 'Not shared'}
                   </p>
-                  <p className="landlord-note">
+                  <p className='landlord-note'>
                     {propertyDetail.landlord.managementStyle}
                   </p>
                 </div>
               </section>
 
-              <section className="review-band">
-                <div className="section-head">
+              <section className='review-band'>
+                <div className='section-head'>
                   <h2>Tenant reviews</h2>
                   <span>
                     {propertyDetail.scorecard.reviewCount} reviews,{' '}
@@ -642,10 +1323,10 @@ function App() {
                   </span>
                 </div>
 
-                <div className="review-list">
+                <div className='review-list'>
                   {propertyDetail.reviews.map((review) => (
-                    <article key={review.id} className="review-card">
-                      <div className="review-header">
+                    <article key={review.id} className='review-card'>
+                      <div className='review-header'>
                         <div>
                           <h3>{review.headline}</h3>
                           <p>
@@ -653,14 +1334,14 @@ function App() {
                             {new Date(review.createdAt).toLocaleDateString()}
                           </p>
                         </div>
-                        <div className="rating-badges">
+                        <div className='rating-badges'>
                           <span>{review.overallRating}/5 overall</span>
                           <span>{review.depositRating}/5 deposit</span>
                           <span>{review.maintenanceRating}/5 maintenance</span>
                         </div>
                       </div>
 
-                      <div className="review-copy-grid">
+                      <div className='review-copy-grid'>
                         <section>
                           <h4>Experience</h4>
                           <p>{review.experienceSummary}</p>
@@ -683,7 +1364,7 @@ function App() {
                         </section>
                         <section>
                           <h4>Signals</h4>
-                          <div className="signal-list">
+                          <div className='signal-list'>
                             <span>{review.recommended ? 'Recommended' : 'Not recommended'}</span>
                             <span>
                               {review.issuesResolved ? 'Issues resolved' : 'Issues stayed open'}
@@ -695,30 +1376,29 @@ function App() {
                         </section>
                       </div>
 
-                      <div className="vote-row">
+                      <div className='vote-row'>
                         {([
                           ['HELPFUL', 'Helpful', review.votes.helpful],
                           ['SAME_ISSUE', 'Same issue', review.votes.sameIssue],
                           ['NOT_HELPFUL', 'Not helpful', review.votes.notHelpful],
                         ] as const).map(([type, label, count]) => (
-                          <button
+                          <Button
                             key={type}
-                            type="button"
-                            className={
-                              review.votes.currentUserVote === type
-                                ? 'vote-button active'
-                                : 'vote-button'
+                            type='button'
+                            variant={
+                              review.votes.currentUserVote === type ? 'default' : 'outline'
                             }
+                            size='sm'
                             disabled={!session?.user}
                             onClick={() => handleVote(review.id, type)}
                           >
                             {label} · {count}
-                          </button>
+                          </Button>
                         ))}
                       </div>
 
-                      <div className="thread-block">
-                        <div className="thread-list">
+                      <div className='thread-block'>
+                        <div className='thread-list'>
                           {review.thread.map((comment) => (
                             <ThreadComment
                               key={comment.id}
@@ -729,20 +1409,21 @@ function App() {
                         </div>
 
                         {session?.user ? (
-                          <div className="reply-form">
-                            <div className="reply-meta">
+                          <div className='reply-form'>
+                            <div className='reply-meta'>
                               <strong>Join the thread</strong>
                               {replyDrafts[review.id]?.parentLabel ? (
-                                <button
-                                  type="button"
-                                  className="ghost-button"
+                                <Button
+                                  type='button'
+                                  variant='ghost'
+                                  size='sm'
                                   onClick={() => clearReplyTarget(review.id)}
                                 >
                                   Replying to {replyDrafts[review.id]?.parentLabel}
-                                </button>
+                                </Button>
                               ) : null}
                             </div>
-                            <textarea
+                            <Textarea
                               value={replyDrafts[review.id]?.body ?? ''}
                               onChange={(event) =>
                                 setReplyDrafts((current) => ({
@@ -755,11 +1436,11 @@ function App() {
                                   },
                                 }))
                               }
-                              placeholder="Add context, confirm a pattern, or ask a follow-up."
+                              placeholder='Add context, confirm a pattern, or ask a follow-up.'
                             />
-                            <button type="button" onClick={() => handleReply(review.id)}>
+                            <Button type='button' onClick={() => handleReply(review.id)}>
                               Post reply
-                            </button>
+                            </Button>
                           </div>
                         ) : null}
                       </div>
@@ -768,50 +1449,50 @@ function App() {
                 </div>
               </section>
 
-              <section className="composer-band">
-                <div className="section-head">
+              <section className='composer-band'>
+                <div className='section-head'>
                   <h2>Submit a review</h2>
                   <span>{session?.user ? 'Authenticated' : 'Sign in required'}</span>
                 </div>
 
                 {session?.user ? (
-                  <form className="review-form" onSubmit={handleCreateReview}>
-                    <div className="form-grid">
-                      <label className="wide">
+                  <form className='review-form' onSubmit={handleCreateReview}>
+                    <div className='form-grid'>
+                      <label className='wide'>
                         <span>Headline</span>
-                        <input
+                        <Input
                           value={reviewDraft.headline}
                           onChange={(event) =>
                             updateReviewDraft('headline', event.target.value)
                           }
-                          placeholder="Short summary of the tenancy outcome"
+                          placeholder='Short summary of the tenancy outcome'
                         />
                       </label>
 
                       <TextAreaField
-                        label="Experience summary"
+                        label='Experience summary'
                         value={reviewDraft.experienceSummary}
                         onChange={(value) =>
                           updateReviewDraft('experienceSummary', value)
                         }
                       />
                       <TextAreaField
-                        label="Problems faced"
+                        label='Problems faced'
                         value={reviewDraft.problemsFaced}
                         onChange={(value) => updateReviewDraft('problemsFaced', value)}
                       />
                       <TextAreaField
-                        label="How helpful was the landlord?"
+                        label='How helpful was the landlord?'
                         value={reviewDraft.landlordSupport}
                         onChange={(value) => updateReviewDraft('landlordSupport', value)}
                       />
                       <TextAreaField
-                        label="Termination or renewal"
+                        label='Termination or renewal'
                         value={reviewDraft.leaseClosure}
                         onChange={(value) => updateReviewDraft('leaseClosure', value)}
                       />
                       <TextAreaField
-                        label="Security deposit outcome"
+                        label='Security deposit outcome'
                         value={reviewDraft.securityDepositOutcome}
                         onChange={(value) =>
                           updateReviewDraft('securityDepositOutcome', value)
@@ -819,45 +1500,46 @@ function App() {
                       />
                     </div>
 
-                    <div className="slider-grid">
+                    <div className='slider-grid'>
                       <RatingSlider
-                        label="Overall"
+                        label='Overall'
                         value={reviewDraft.overallRating}
                         onChange={(value) => updateReviewDraft('overallRating', value)}
                       />
                       <RatingSlider
-                        label="Landlord"
+                        label='Landlord'
                         value={reviewDraft.landlordRating}
                         onChange={(value) => updateReviewDraft('landlordRating', value)}
                       />
                       <RatingSlider
-                        label="Property"
+                        label='Property'
                         value={reviewDraft.propertyRating}
                         onChange={(value) => updateReviewDraft('propertyRating', value)}
                       />
                       <RatingSlider
-                        label="Maintenance"
+                        label='Maintenance'
                         value={reviewDraft.maintenanceRating}
                         onChange={(value) =>
                           updateReviewDraft('maintenanceRating', value)
                         }
                       />
                       <RatingSlider
-                        label="Move-out"
+                        label='Move-out'
                         value={reviewDraft.moveOutRating}
                         onChange={(value) => updateReviewDraft('moveOutRating', value)}
                       />
                       <RatingSlider
-                        label="Deposit"
+                        label='Deposit'
                         value={reviewDraft.depositRating}
                         onChange={(value) => updateReviewDraft('depositRating', value)}
                       />
                     </div>
 
-                    <div className="checkbox-row">
-                      <label className="checkbox-field">
+                    <div className='checkbox-row'>
+                      <label className='checkbox-field'>
                         <input
-                          type="checkbox"
+                          type='checkbox'
+                          className='h-4 w-4 rounded border border-input bg-background text-primary accent-[hsl(var(--primary))]'
                           checked={reviewDraft.recommended}
                           onChange={(event) =>
                             updateReviewDraft('recommended', event.target.checked)
@@ -865,9 +1547,10 @@ function App() {
                         />
                         <span>Recommend this tenancy</span>
                       </label>
-                      <label className="checkbox-field">
+                      <label className='checkbox-field'>
                         <input
-                          type="checkbox"
+                          type='checkbox'
+                          className='h-4 w-4 rounded border border-input bg-background text-primary accent-[hsl(var(--primary))]'
                           checked={reviewDraft.issuesResolved}
                           onChange={(event) =>
                             updateReviewDraft('issuesResolved', event.target.checked)
@@ -875,9 +1558,10 @@ function App() {
                         />
                         <span>Core issues were resolved</span>
                       </label>
-                      <label className="checkbox-field">
+                      <label className='checkbox-field'>
                         <input
-                          type="checkbox"
+                          type='checkbox'
+                          className='h-4 w-4 rounded border border-input bg-background text-primary accent-[hsl(var(--primary))]'
                           checked={reviewDraft.wouldRentAgain}
                           onChange={(event) =>
                             updateReviewDraft('wouldRentAgain', event.target.checked)
@@ -887,24 +1571,26 @@ function App() {
                       </label>
                     </div>
 
-                    <button type="submit">Publish review</button>
+                    <Button type='submit'>Publish review</Button>
                   </form>
                 ) : (
-                  <div className="empty-state">
+                  <div className='empty-state'>
                     Sign in with OTP or configure OAuth to add your own review.
                   </div>
                 )}
               </section>
             </>
           ) : (
-            <div className="empty-state">
+            <div className='empty-state'>
               {selectedProperty
                 ? 'Property details are not available yet.'
                 : 'Choose a property from the list to inspect the review thread.'}
             </div>
           )}
         </section>
-      </main>
+        </main>
+      )}
+      </div>
     </div>
   )
 }
@@ -916,8 +1602,11 @@ function TextAreaField(props: {
 }) {
   return (
     <label>
-      <span>{props.label}</span>
-      <textarea value={props.value} onChange={(event) => props.onChange(event.target.value)} />
+      <span className='text-xs font-medium text-muted-foreground'>{props.label}</span>
+      <Textarea
+        value={props.value}
+        onChange={(event) => props.onChange(event.target.value)}
+      />
     </label>
   )
 }
@@ -928,18 +1617,19 @@ function RatingSlider(props: {
   onChange: (value: number) => void
 }) {
   return (
-    <label className="slider-field">
-      <div className="slider-label">
+    <label className='slider-field'>
+      <div className='slider-label'>
         <span>{props.label}</span>
         <strong>{props.value}</strong>
       </div>
       <input
-        type="range"
-        min="1"
-        max="5"
-        step="1"
+        type='range'
+        min='1'
+        max='5'
+        step='1'
         value={props.value}
         onChange={(event) => props.onChange(Number(event.target.value))}
+        className='h-2 w-full cursor-pointer appearance-none rounded-full bg-muted accent-[hsl(var(--primary))]'
       />
     </label>
   )
@@ -950,23 +1640,19 @@ function ThreadComment(props: {
   onReply: (comment: ReviewComment) => void
 }) {
   return (
-    <div className="comment-node">
-      <div className="comment-body">
+    <div className='comment-node'>
+      <div className='comment-body'>
         <p>
           <strong>{props.comment.author.displayName}</strong> ·{' '}
           {new Date(props.comment.createdAt).toLocaleDateString()}
         </p>
         <p>{props.comment.body}</p>
-        <button
-          type="button"
-          className="ghost-button"
-          onClick={() => props.onReply(props.comment)}
-        >
+        <Button type='button' variant='ghost' size='sm' onClick={() => props.onReply(props.comment)}>
           Reply
-        </button>
+        </Button>
       </div>
       {props.comment.replies.length > 0 ? (
-        <div className="comment-children">
+        <div className='comment-children'>
           {props.comment.replies.map((reply) => (
             <ThreadComment key={reply.id} comment={reply} onReply={props.onReply} />
           ))}
