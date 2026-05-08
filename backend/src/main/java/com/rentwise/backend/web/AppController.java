@@ -20,14 +20,19 @@ public class AppController {
         this.appService = appService;
     }
 
+    @GetMapping("/catalog/countries")
+    public List<String> countries() {
+        return appService.countries();
+    }
+
     @GetMapping("/catalog/states")
-    public List<String> states() {
-        return appService.states();
+    public List<String> states(@RequestParam String country) {
+        return appService.states(country);
     }
 
     @GetMapping("/catalog/cities")
-    public List<String> cities(@RequestParam String state) {
-        return appService.cities(state);
+    public List<String> cities(@RequestParam String country, @RequestParam String state) {
+        return appService.cities(country, state);
     }
 
     @GetMapping("/catalog/localities")

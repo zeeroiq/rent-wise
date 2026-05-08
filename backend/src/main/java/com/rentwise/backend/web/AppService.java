@@ -1,6 +1,7 @@
 package com.rentwise.backend.web;
 
 import com.rentwise.backend.auth.RentwisePrincipal;
+import com.rentwise.backend.location.*;
 import com.rentwise.backend.landlord.Landlord;
 import com.rentwise.backend.property.Property;
 import com.rentwise.backend.property.PropertyStatus;
@@ -29,6 +30,9 @@ import org.springframework.transaction.annotation.Transactional;
 @Transactional
 public class AppService {
     private final PropertyRepository propertyRepository;
+    private final CountryRepository countryRepository;
+    private final StateRepository stateRepository;
+    private final CityRepository cityRepository;
     private final ReviewRepository reviewRepository;
     private final ReviewCommentRepository reviewCommentRepository;
     private final ReviewVoteRepository reviewVoteRepository;
@@ -36,12 +40,18 @@ public class AppService {
 
     public AppService(
             PropertyRepository propertyRepository,
+            CountryRepository countryRepository,
+            StateRepository stateRepository,
+            CityRepository cityRepository,
             ReviewRepository reviewRepository,
             ReviewCommentRepository reviewCommentRepository,
             ReviewVoteRepository reviewVoteRepository,
             AppUserRepository appUserRepository
     ) {
         this.propertyRepository = propertyRepository;
+        this.countryRepository = countryRepository;
+        this.stateRepository = stateRepository;
+        this.cityRepository = cityRepository;
         this.reviewRepository = reviewRepository;
         this.reviewCommentRepository = reviewCommentRepository;
         this.reviewVoteRepository = reviewVoteRepository;
@@ -49,18 +59,40 @@ public class AppService {
     }
 
     @Transactional(readOnly = true)
-    public List<String> states() {
-        return propertyRepository.findDistinctStates();
+    public List<String> countries() {
+        return countryRepository.findAllByOrderByName().stream()
+                .map(Country::getName)
+                .toList();
     }
 
     @Transactional(readOnly = true)
-    public List<String> cities(String state) {
-        return propertyRepository.findDistinctCities(state);
+    public List<String> states(String country) {
+        if (!hasText(country)) {
+            return List.of();
+        }
+        return countryRepository.findByNameIgnoreCase(country.trim())
+                .map(found -> stateRepository.findByCountryIdOrderByName(found.getId()).stream()
+                        .map(State::getName)
+                        .toList())
+                .orElse(List.of());
+    }
+
+    @Transactional(readOnly = true)
+    public List<String> cities(String country, String state) {
+        if (!hasText(country) || !hasText(state)) {
+            return List.of();
+        }
+        return countryRepository.findByNameIgnoreCase(country.trim())
+                .flatMap(foundCountry -> stateRepository.findByCountryIdAndName(foundCountry.getId(), state.trim()))
+                .map(foundState -> cityRepository.findByStateIdOrderByName(foundState.getId()).stream()
+                        .map(City::getName)
+                        .toList())
+                .orElse(List.of());
     }
 
     @Transactional(readOnly = true)
     public List<String> localities(String state, String city) {
-        return propertyRepository.findDistinctLocalities(state, city);
+        return propertyRepository.findDistinctLocalities(state, city, PropertyStatus.ACTIVE);
     }
 
     @Transactional(readOnly = true)
@@ -222,6 +254,10 @@ public class AppService {
                 property.getVerifiedBy() != null ? toSessionUser(property.getVerifiedBy()) : null,
                 property.getVerifiedAt()
         );
+    }
+
+    private boolean hasText(String value) {
+        return value != null && !value.trim().isEmpty();
     }
 
     private ReviewDto mapReview(Review review, List<ReviewComment> comments, List<ReviewVote> votes, Long currentUserId) {

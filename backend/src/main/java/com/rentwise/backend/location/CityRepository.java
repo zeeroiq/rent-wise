@@ -8,9 +8,9 @@ public interface CityRepository extends JpaRepository<City, Long> {
     Optional<City> findByStateIdAndCode(Long stateId, String code);
 
     Optional<City> findByStateIdAndName(Long stateId, String name);
+    Optional<City> findByStateIdAndNameIgnoreCase(Long stateId, String name);
 
     List<City> findByStateIdOrderByName(Long stateId);
 
     List<City> findAllByOrderByName();
 }
-

@@ -8,9 +8,10 @@ public interface StateRepository extends JpaRepository<State, Long> {
     Optional<State> findByCountryIdAndCode(Long countryId, String code);
 
     Optional<State> findByCountryIdAndName(Long countryId, String name);
+    Optional<State> findByCountryIdAndNameIgnoreCase(Long countryId, String name);
+    Optional<State> findByNameIgnoreCase(String name);
 
     List<State> findByCountryIdOrderByName(Long countryId);
 
     List<State> findAllByOrderByName();
 }
-

@@ -31,9 +31,14 @@ public interface PropertyRepository extends JpaRepository<Property, Long> {
             from Property p
             where lower(p.state) = lower(:state)
               and lower(p.city) = lower(:city)
+              and p.status = :status
             order by p.locality
             """)
-    List<String> findDistinctLocalities(@Param("state") String state, @Param("city") String city);
+    List<String> findDistinctLocalities(
+            @Param("state") String state,
+            @Param("city") String city,
+            @Param("status") PropertyStatus status
+    );
 
     @Query("""
             select p

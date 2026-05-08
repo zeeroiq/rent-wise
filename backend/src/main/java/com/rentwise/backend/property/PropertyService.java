@@ -2,6 +2,9 @@ package com.rentwise.backend.property;
 
 import com.rentwise.backend.landlord.Landlord;
 import com.rentwise.backend.landlord.LandlordRepository;
+import com.rentwise.backend.location.CityRepository;
+import com.rentwise.backend.location.State;
+import com.rentwise.backend.location.StateRepository;
 import com.rentwise.backend.review.Review;
 import com.rentwise.backend.review.ReviewRepository;
 import com.rentwise.backend.user.AppUser;
@@ -28,11 +31,21 @@ public class PropertyService {
 
     private final PropertyRepository propertyRepository;
     private final LandlordRepository landlordRepository;
+    private final StateRepository stateRepository;
+    private final CityRepository cityRepository;
     private final ReviewRepository reviewRepository;
 
-    public PropertyService(PropertyRepository propertyRepository, LandlordRepository landlordRepository, ReviewRepository reviewRepository) {
+    public PropertyService(
+            PropertyRepository propertyRepository,
+            LandlordRepository landlordRepository,
+            StateRepository stateRepository,
+            CityRepository cityRepository,
+            ReviewRepository reviewRepository
+    ) {
         this.propertyRepository = propertyRepository;
         this.landlordRepository = landlordRepository;
+        this.stateRepository = stateRepository;
+        this.cityRepository = cityRepository;
         this.reviewRepository = reviewRepository;
     }
 
@@ -41,6 +54,7 @@ public class PropertyService {
      */
     public PropertyDetailDto createProperty(PropertyOnboardingCommand command, AppUser creator) {
         Landlord landlord = resolveLandlord(command);
+        validateLocation(command.state(), command.city());
 
         Property property = new Property(
                 command.title(),
@@ -166,6 +180,7 @@ public class PropertyService {
     public PropertyDetailDto updateProperty(Long propertyId, PropertyOnboardingCommand command) {
         Property property = propertyRepository.findById(propertyId)
                 .orElseThrow(() -> new NoSuchElementException("Property not found: " + propertyId));
+        validateLocation(command.state(), command.city());
 
         property.setTitle(command.title());
         property.setPropertyType(command.propertyType());
@@ -216,6 +231,15 @@ public class PropertyService {
         }
         String trimmed = value.trim();
         return Objects.equals(trimmed, "") ? null : trimmed;
+    }
+
+    private void validateLocation(String stateName, String cityName) {
+        State state = stateRepository.findByNameIgnoreCase(stateName.trim())
+                .orElseThrow(() -> new IllegalArgumentException("Invalid state: " + stateName));
+        cityRepository.findByStateIdAndNameIgnoreCase(state.getId(), cityName.trim())
+                .orElseThrow(() -> new IllegalArgumentException(
+                        "Invalid city '" + cityName + "' for state '" + state.getName() + "'"
+                ));
     }
 
     /**

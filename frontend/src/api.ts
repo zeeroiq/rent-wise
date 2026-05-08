@@ -89,11 +89,21 @@ export const api = {
   },
 
   fetchStates() {
-    return request<string[]>('/catalog/states')
+    return request<string[]>('/catalog/states?country=India')
   },
 
-  fetchCities(state: string) {
-    return request<string[]>(`/catalog/cities?state=${encodeURIComponent(state)}`)
+  fetchCountries() {
+    return request<string[]>('/catalog/countries')
+  },
+
+  fetchStatesByCountry(country: string) {
+    return request<string[]>(`/catalog/states?country=${encodeURIComponent(country)}`)
+  },
+
+  fetchCities(country: string, state: string) {
+    return request<string[]>(
+      `/catalog/cities?country=${encodeURIComponent(country)}&state=${encodeURIComponent(state)}`,
+    )
   },
 
   fetchLocalities(state: string, city: string) {
@@ -208,6 +218,18 @@ export const api = {
   deleteCity(cityId: number) {
     return request<void>(`/admin/locations/cities/${cityId}`, {
       method: 'DELETE',
+    })
+  },
+
+  getPendingProperties(page = 0, size = 50) {
+    return request<{ content: PropertyCard[] }>(
+      `/properties/pending/all?page=${page}&size=${size}`,
+    )
+  },
+
+  approveProperty(propertyId: number) {
+    return request<PropertyDetail>(`/properties/${propertyId}/verify`, {
+      method: 'POST',
     })
   },
 }

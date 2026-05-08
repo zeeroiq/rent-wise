@@ -69,6 +69,7 @@ const initialPropertyDraft: CreatePropertyPayload = {
   exitDate: '',
   amenities: '',
 }
+const DEFAULT_COUNTRY = 'India'
 
 function App() {
   const [session, setSession] = useState<AuthSession | null>(null)
@@ -81,8 +82,10 @@ function App() {
   const [otpChallenge, setOtpChallenge] = useState<OtpChallenge | null>(null)
   const [otpCode, setOtpCode] = useState('')
   const [states, setStates] = useState<string[]>([])
+  const [countries, setCountries] = useState<string[]>([])
   const [cities, setCities] = useState<string[]>([])
   const [localities, setLocalities] = useState<string[]>([])
+  const [selectedCountry, setSelectedCountry] = useState(DEFAULT_COUNTRY)
   const [selectedState, setSelectedState] = useState('')
   const [selectedCity, setSelectedCity] = useState('')
   const [selectedLocality, setSelectedLocality] = useState('')
@@ -100,6 +103,9 @@ function App() {
   const [submittingProperty, setSubmittingProperty] = useState(false)
   const [propertyDraft, setPropertyDraft] =
     useState<CreatePropertyPayload>(initialPropertyDraft)
+  const [propertyStates, setPropertyStates] = useState<string[]>([])
+  const [propertyCities, setPropertyCities] = useState<string[]>([])
+  const [propertyLocalities, setPropertyLocalities] = useState<string[]>([])
 
   const oauthProviders = session?.oauthProviders ?? []
   const selectedProperty = useMemo(
@@ -119,9 +125,10 @@ function App() {
 
     void (async () => {
       try {
-        const [sessionData, statesData, propertiesData] = await Promise.all([
+        const [sessionData, countriesData, statesData, propertiesData] = await Promise.all([
           api.getSession(),
-          api.fetchStates(),
+          api.fetchCountries(),
+          api.fetchStatesByCountry(DEFAULT_COUNTRY),
           api.searchProperties({}),
         ])
 
@@ -137,7 +144,10 @@ function App() {
           setLoginOpen(!sessionData.user)
           initialLoginDecision.current = true
         }
+        setCountries(countriesData)
+        setSelectedCountry(DEFAULT_COUNTRY)
         setStates(statesData)
+        setPropertyStates(statesData)
         startTransition(() => {
           setProperties(propertiesData)
           setSelectedPropertyId(propertiesData[0]?.id ?? null)
@@ -163,18 +173,28 @@ function App() {
   }, [])
 
   useEffect(() => {
+    void api
+      .fetchStatesByCountry(selectedCountry)
+      .then((items) => {
+        setStates(items)
+        setSelectedState((current) => (items.includes(current) ? current : ''))
+      })
+      .catch(reportError)
+  }, [selectedCountry])
+
+  useEffect(() => {
     if (!selectedState) {
       return
     }
 
     void api
-      .fetchCities(selectedState)
+      .fetchCities(selectedCountry, selectedState)
       .then((items) => {
         setCities(items)
         setSelectedCity((current) => (items.includes(current) ? current : ''))
       })
       .catch(reportError)
-  }, [selectedState])
+  }, [selectedCountry, selectedState])
 
   useEffect(() => {
     if (!selectedState || !selectedCity) {
@@ -189,6 +209,52 @@ function App() {
       })
       .catch(reportError)
   }, [selectedState, selectedCity])
+
+  useEffect(() => {
+    if (!propertyDraft.state) {
+      setPropertyCities([])
+      if (propertyDraft.city) {
+        updatePropertyDraft('city', '')
+      }
+      if (propertyDraft.locality) {
+        updatePropertyDraft('locality', '')
+      }
+      return
+    }
+    void api
+      .fetchCities(DEFAULT_COUNTRY, propertyDraft.state)
+      .then((items) => {
+        setPropertyCities(items)
+        if (!items.includes(propertyDraft.city)) {
+          if (propertyDraft.city) {
+            updatePropertyDraft('city', '')
+          }
+          if (propertyDraft.locality) {
+            updatePropertyDraft('locality', '')
+          }
+        }
+      })
+      .catch(reportError)
+  }, [propertyDraft.state, propertyDraft.city, propertyDraft.locality])
+
+  useEffect(() => {
+    if (!propertyDraft.state || !propertyDraft.city) {
+      setPropertyLocalities([])
+      if (propertyDraft.locality) {
+        updatePropertyDraft('locality', '')
+      }
+      return
+    }
+    void api
+      .fetchLocalities(propertyDraft.state, propertyDraft.city)
+      .then((items) => {
+        setPropertyLocalities(items)
+        if (propertyDraft.locality && !items.includes(propertyDraft.locality)) {
+          updatePropertyDraft('locality', '')
+        }
+      })
+      .catch(reportError)
+  }, [propertyDraft.state, propertyDraft.city, propertyDraft.locality])
 
   useEffect(() => {
     if (selectedPropertyId == null) {
@@ -380,6 +446,16 @@ function App() {
     setLocalities([])
   }
 
+  function handleCountryChange(value: string) {
+    setSelectedCountry(value)
+    setSelectedState('')
+    setSelectedCity('')
+    setSelectedLocality('')
+    setStates([])
+    setCities([])
+    setLocalities([])
+  }
+
   function handleCityChange(value: string) {
     setSelectedCity(value)
     setSelectedLocality('')
@@ -422,11 +498,14 @@ function App() {
       }
       await api.createProperty(payload)
       setPropertyDraft(initialPropertyDraft)
+      setPropertyCities([])
+      setPropertyLocalities([])
       setPropertyDialogOpen(false)
       setStatus('Property submitted for verification')
       await handleSearch()
-      const statesData = await api.fetchStates()
+      const statesData = await api.fetchStatesByCountry(DEFAULT_COUNTRY)
       setStates(statesData)
+      setPropertyStates(statesData)
     } catch (caughtError) {
       reportError(caughtError)
     } finally {
@@ -628,16 +707,54 @@ function App() {
                 <Input value={propertyDraft.addressLine1} onChange={(event) => updatePropertyDraft('addressLine1', event.target.value)} required />
               </label>
               <label className='space-y-1'>
-                <span className='text-xs font-medium text-muted-foreground'>Locality*</span>
-                <Input value={propertyDraft.locality} onChange={(event) => updatePropertyDraft('locality', event.target.value)} required />
+                <span className='text-xs font-medium text-muted-foreground'>State*</span>
+                <select
+                  className={nativeSelectClassName}
+                  value={propertyDraft.state}
+                  onChange={(event) => updatePropertyDraft('state', event.target.value)}
+                  required
+                >
+                  <option value=''>Select state</option>
+                  {propertyStates.map((state) => (
+                    <option key={state} value={state}>
+                      {state}
+                    </option>
+                  ))}
+                </select>
               </label>
               <label className='space-y-1'>
                 <span className='text-xs font-medium text-muted-foreground'>City*</span>
-                <Input value={propertyDraft.city} onChange={(event) => updatePropertyDraft('city', event.target.value)} required />
+                <select
+                  className={nativeSelectClassName}
+                  value={propertyDraft.city}
+                  onChange={(event) => updatePropertyDraft('city', event.target.value)}
+                  disabled={!propertyDraft.state}
+                  required
+                >
+                  <option value=''>Select city</option>
+                  {propertyCities.map((city) => (
+                    <option key={city} value={city}>
+                      {city}
+                    </option>
+                  ))}
+                </select>
               </label>
               <label className='space-y-1'>
-                <span className='text-xs font-medium text-muted-foreground'>State*</span>
-                <Input value={propertyDraft.state} onChange={(event) => updatePropertyDraft('state', event.target.value)} required />
+                <span className='text-xs font-medium text-muted-foreground'>Locality*</span>
+                <select
+                  className={nativeSelectClassName}
+                  value={propertyDraft.locality}
+                  onChange={(event) => updatePropertyDraft('locality', event.target.value)}
+                  disabled={!propertyDraft.city}
+                  required
+                >
+                  <option value=''>Select locality</option>
+                  {propertyLocalities.map((locality) => (
+                    <option key={locality} value={locality}>
+                      {locality}
+                    </option>
+                  ))}
+                </select>
               </label>
               <label className='space-y-1'>
                 <span className='text-xs font-medium text-muted-foreground'>Postal code</span>
@@ -750,13 +867,28 @@ function App() {
             </div>
 
             <label>
+              <span className='text-xs font-medium text-muted-foreground'>Country</span>
+              <select
+                value={selectedCountry}
+                onChange={(event) => handleCountryChange(event.target.value)}
+                className={nativeSelectClassName}
+              >
+                {countries.map((country) => (
+                  <option key={country} value={country}>
+                    {country}
+                  </option>
+                ))}
+              </select>
+            </label>
+
+            <label>
               <span className='text-xs font-medium text-muted-foreground'>State</span>
               <select
                 value={selectedState}
                 onChange={(event) => handleStateChange(event.target.value)}
                 className={nativeSelectClassName}
               >
-                <option value=''>All states</option>
+                <option value=''>All states in {selectedCountry}</option>
                 {states.map((state) => (
                   <option key={state} value={state}>
                     {state}

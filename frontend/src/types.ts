@@ -41,6 +41,8 @@ export interface PropertyCard {
   postalCode: string | null
   highlights: string | null
   landlordName: string
+  status?: PropertyStatus
+  onboardingDate?: string
   scorecard: Scorecard
 }
 
