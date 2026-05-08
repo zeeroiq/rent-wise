@@ -32,6 +32,7 @@ public class AuthService {
 
     private final AppUserRepository appUserRepository;
     private final OtpChallengeRepository otpChallengeRepository;
+    private final OtpDeliveryService otpDeliveryService;
     private final Environment environment;
     private final int otpLength;
     private final int otpTtlMinutes;
@@ -40,6 +41,7 @@ public class AuthService {
     public AuthService(
             AppUserRepository appUserRepository,
             OtpChallengeRepository otpChallengeRepository,
+            OtpDeliveryService otpDeliveryService,
             Environment environment,
             @Value("${app.otp.length}") int otpLength,
             @Value("${app.otp.ttl-minutes}") int otpTtlMinutes,
@@ -47,6 +49,7 @@ public class AuthService {
     ) {
         this.appUserRepository = appUserRepository;
         this.otpChallengeRepository = otpChallengeRepository;
+        this.otpDeliveryService = otpDeliveryService;
         this.environment = environment;
         this.otpLength = otpLength;
         this.otpTtlMinutes = otpTtlMinutes;
@@ -59,7 +62,10 @@ public class AuthService {
         String code = generateOtp();
         LocalDateTime expiresAt = LocalDateTime.now().plusMinutes(otpTtlMinutes);
         OtpChallenge challenge = otpChallengeRepository.save(new OtpChallenge(command.channel(), destination, code, expiresAt));
-        log.info("DEV OTP for {} {} is {}", command.channel(), destination, code);
+        otpDeliveryService.deliver(command.channel(), destination, code);
+        if (exposeDevCode) {
+            log.info("DEV OTP for {} {} is {}", command.channel(), destination, code);
+        }
         return new OtpChallengeResponse(challenge.getId(), destination, expiresAt, exposeDevCode ? code : null);
     }
 
