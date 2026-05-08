@@ -1,4 +1,4 @@
-import { useEffect, useState } from 'react'
+import { useCallback, useEffect, useState } from 'react'
 import { api } from './api'
 import type { PropertyCard } from './types'
 import { Button } from '@/components/common'
@@ -13,7 +13,7 @@ export function PropertiesApprovalManager({ onError, onStatus }: PropertiesAppro
   const [loading, setLoading] = useState(true)
   const [approvingId, setApprovingId] = useState<number | null>(null)
 
-  async function loadPendingProperties() {
+  const loadPendingProperties = useCallback(async () => {
     setLoading(true)
     try {
       const response = await api.getPendingProperties()
@@ -23,11 +23,12 @@ export function PropertiesApprovalManager({ onError, onStatus }: PropertiesAppro
     } finally {
       setLoading(false)
     }
-  }
+  }, [onError])
 
   useEffect(() => {
+    // eslint-disable-next-line react-hooks/set-state-in-effect
     void loadPendingProperties()
-  }, [])
+  }, [loadPendingProperties])
 
   async function handleApprove(propertyId: number) {
     setApprovingId(propertyId)

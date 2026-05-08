@@ -217,22 +217,27 @@ function App() {
 
   useEffect(() => {
     if (!propertyCountry) {
+      // eslint-disable-next-line react-hooks/set-state-in-effect
       setPropertyStates([])
       return
     }
-    void api
-      .fetchStatesByCountry(propertyCountry)
-      .then((items) => {
+    const loadStates = async () => {
+      try {
+        const items = await api.fetchStatesByCountry(propertyCountry)
         setPropertyStates(items)
         if (propertyDraft.state && !items.includes(propertyDraft.state)) {
           updatePropertyDraft('state', '')
         }
-      })
-      .catch(reportError)
+      } catch (error) {
+        reportError(error)
+      }
+    }
+    void loadStates()
   }, [propertyCountry, propertyDraft.state])
 
   useEffect(() => {
     if (!propertyDraft.state) {
+      // eslint-disable-next-line react-hooks/set-state-in-effect
       setPropertyCities([])
       if (propertyDraft.city) {
         updatePropertyDraft('city', '')
@@ -242,9 +247,9 @@ function App() {
       }
       return
     }
-    void api
-      .fetchCities(propertyCountry, propertyDraft.state)
-      .then((items) => {
+    const loadCities = async () => {
+      try {
+        const items = await api.fetchCities(propertyCountry, propertyDraft.state)
         setPropertyCities(items)
         if (!items.includes(propertyDraft.city)) {
           if (propertyDraft.city) {
@@ -254,35 +259,42 @@ function App() {
             updatePropertyDraft('locality', '')
           }
         }
-      })
-      .catch(reportError)
+      } catch (error) {
+        reportError(error)
+      }
+    }
+    void loadCities()
   }, [propertyCountry, propertyDraft.state, propertyDraft.city, propertyDraft.locality])
 
   useEffect(() => {
     if (!propertyDraft.state || !propertyDraft.city) {
+      // eslint-disable-next-line react-hooks/set-state-in-effect
       setPropertyLocalities([])
       if (propertyDraft.locality) {
         updatePropertyDraft('locality', '')
       }
       return
     }
-    void api
-      .fetchLocalities(propertyDraft.state, propertyDraft.city)
-      .then((items) => {
+    const loadLocalities = async () => {
+      try {
+        const items = await api.fetchLocalities(propertyDraft.state, propertyDraft.city)
         setPropertyLocalities(items)
         if (propertyDraft.locality && !items.includes(propertyDraft.locality)) {
-          updatePropertyDraft('locality', '')
-        }
-      })
-      .catch(reportError)
-  }, [propertyDraft.state, propertyDraft.city, propertyDraft.locality])
+           updatePropertyDraft('locality', '')
+         }
+       } catch (error) {
+         reportError(error)
+       }
+     }
+     void loadLocalities()
+   }, [propertyCountry, propertyDraft.state, propertyDraft.city, propertyDraft.locality])
 
-  useEffect(() => {
-    if (selectedPropertyId == null) {
-      return
-    }
+   useEffect(() => {
+     if (selectedPropertyId == null) {
+       return
+     }
 
-    let cancelled = false
+     let cancelled = false
 
     void (async () => {
       setLoadingDetail(true)
