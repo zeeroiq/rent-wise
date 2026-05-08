@@ -103,6 +103,7 @@ function App() {
   const [submittingProperty, setSubmittingProperty] = useState(false)
   const [propertyDraft, setPropertyDraft] =
     useState<CreatePropertyPayload>(initialPropertyDraft)
+  const [propertyCountry, setPropertyCountry] = useState(DEFAULT_COUNTRY)
   const [propertyStates, setPropertyStates] = useState<string[]>([])
   const [propertyCities, setPropertyCities] = useState<string[]>([])
   const [propertyLocalities, setPropertyLocalities] = useState<string[]>([])
@@ -147,7 +148,7 @@ function App() {
         setCountries(countriesData)
         setSelectedCountry(DEFAULT_COUNTRY)
         setStates(statesData)
-        setPropertyStates(statesData)
+        setPropertyCountry(DEFAULT_COUNTRY)
         startTransition(() => {
           setProperties(propertiesData)
           setSelectedPropertyId(propertiesData[0]?.id ?? null)
@@ -211,6 +212,22 @@ function App() {
   }, [selectedState, selectedCity])
 
   useEffect(() => {
+    if (!propertyCountry) {
+      setPropertyStates([])
+      return
+    }
+    void api
+      .fetchStatesByCountry(propertyCountry)
+      .then((items) => {
+        setPropertyStates(items)
+        if (propertyDraft.state && !items.includes(propertyDraft.state)) {
+          updatePropertyDraft('state', '')
+        }
+      })
+      .catch(reportError)
+  }, [propertyCountry, propertyDraft.state])
+
+  useEffect(() => {
     if (!propertyDraft.state) {
       setPropertyCities([])
       if (propertyDraft.city) {
@@ -222,7 +239,7 @@ function App() {
       return
     }
     void api
-      .fetchCities(DEFAULT_COUNTRY, propertyDraft.state)
+      .fetchCities(propertyCountry, propertyDraft.state)
       .then((items) => {
         setPropertyCities(items)
         if (!items.includes(propertyDraft.city)) {
@@ -235,7 +252,7 @@ function App() {
         }
       })
       .catch(reportError)
-  }, [propertyDraft.state, propertyDraft.city, propertyDraft.locality])
+  }, [propertyCountry, propertyDraft.state, propertyDraft.city, propertyDraft.locality])
 
   useEffect(() => {
     if (!propertyDraft.state || !propertyDraft.city) {
@@ -462,6 +479,20 @@ function App() {
     setLocalities([])
   }
 
+  function openPropertyDialog() {
+    setPropertyCountry(selectedCountry || DEFAULT_COUNTRY)
+    setPropertyDialogOpen(true)
+  }
+
+  function handlePropertyCountryChange(value: string) {
+    setPropertyCountry(value)
+    updatePropertyDraft('state', '')
+    updatePropertyDraft('city', '')
+    updatePropertyDraft('locality', '')
+    setPropertyCities([])
+    setPropertyLocalities([])
+  }
+
   function updateReviewDraft<K extends keyof ReviewDraft>(
     key: K,
     value: ReviewDraft[K],
@@ -498,6 +529,7 @@ function App() {
       }
       await api.createProperty(payload)
       setPropertyDraft(initialPropertyDraft)
+      setPropertyCountry(selectedCountry || DEFAULT_COUNTRY)
       setPropertyCities([])
       setPropertyLocalities([])
       setPropertyDialogOpen(false)
@@ -505,7 +537,6 @@ function App() {
       await handleSearch()
       const statesData = await api.fetchStatesByCountry(DEFAULT_COUNTRY)
       setStates(statesData)
-      setPropertyStates(statesData)
     } catch (caughtError) {
       reportError(caughtError)
     } finally {
@@ -707,6 +738,22 @@ function App() {
                 <Input value={propertyDraft.addressLine1} onChange={(event) => updatePropertyDraft('addressLine1', event.target.value)} required />
               </label>
               <label className='space-y-1'>
+                <span className='text-xs font-medium text-muted-foreground'>Country*</span>
+                <select
+                  className={nativeSelectClassName}
+                  value={propertyCountry}
+                  onChange={(event) => handlePropertyCountryChange(event.target.value)}
+                  required
+                >
+                  <option value=''>Select country</option>
+                  {countries.map((country) => (
+                    <option key={country} value={country}>
+                      {country}
+                    </option>
+                  ))}
+                </select>
+              </label>
+              <label className='space-y-1'>
                 <span className='text-xs font-medium text-muted-foreground'>State*</span>
                 <select
                   className={nativeSelectClassName}
@@ -714,7 +761,7 @@ function App() {
                   onChange={(event) => updatePropertyDraft('state', event.target.value)}
                   required
                 >
-                  <option value=''>Select state</option>
+                  <option value=''>Select state in {propertyCountry || 'country'}</option>
                   {propertyStates.map((state) => (
                     <option key={state} value={state}>
                       {state}
@@ -939,7 +986,7 @@ function App() {
               variant='outline'
               onClick={() => {
                 if (session?.user) {
-                  setPropertyDialogOpen(true)
+                  openPropertyDialog()
                 } else {
                   setLoginOpen(true)
                 }
@@ -988,7 +1035,7 @@ function App() {
                       variant='outline'
                       onClick={() => {
                         if (session?.user) {
-                          setPropertyDialogOpen(true)
+                          openPropertyDialog()
                         } else {
                           setLoginOpen(true)
                         }

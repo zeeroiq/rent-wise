@@ -510,16 +510,17 @@ label span {
   .banner {
   padding: 0.85rem 1rem;
   background: hsl(var(--teal-soft));
+  color: hsl(var(--foreground));
 }
 
   .banner.error {
   background: hsl(var(--clay-soft));
-  color: #6e2a17;
+  color: hsl(var(--foreground));
 }
 
   .banner.success {
   background: hsl(var(--olive-soft));
-  color: #324215;
+  color: hsl(var(--foreground));
 }
 
   .empty-state {
